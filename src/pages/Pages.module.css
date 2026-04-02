@@ -1,0 +1,47 @@
+.page {
+  max-width: 720px;
+}
+
+.h1 {
+  margin: 0 0 var(--space-sm);
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.lead {
+  margin: 0 0 var(--space-xl);
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+}
+
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  align-items: flex-start;
+}
+
+.muted {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+}
+
+.muted code {
+  font-size: 0.875em;
+  color: var(--color-accent);
+}
