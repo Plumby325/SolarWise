@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Button } from '../components/ui/Button'
-import { Card } from '../components/ui/Card'
-import { Input } from '../components/ui/Input'
-import styles from './Pages.module.css'
+import { Button } from '@/shared/components/ui/Button'
+import { Card } from '@/shared/components/ui/Card'
+import { Input } from '@/shared/components/ui/Input'
+import styles from './HomePage.module.css'
 
 export function HomePage() {
   const [name, setName] = useState('')

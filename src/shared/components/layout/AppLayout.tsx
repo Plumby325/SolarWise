@@ -3,8 +3,8 @@ import styles from './AppLayout.module.css'
 
 const navItems = [
   { to: '/', label: '홈', end: true },
-  { to: '/dashboard', label: '대시보드' },
-  { to: '/settings', label: '설정' },
+  { to: '/dashboard', label: '대시보드', end: false },
+  { to: '/settings', label: '설정', end: false },
 ] as const
 
 export function AppLayout() {
