@@ -5,16 +5,17 @@
   gap: var(--space-xs);
   min-height: 40px;
   padding: 0 var(--space-md);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   font-size: 0.9375rem;
   font-weight: 600;
+  line-height: 1;
   cursor: pointer;
-  border: 1px solid transparent;
   transition:
-    background 0.15s ease,
+    background-color 0.15s ease,
     border-color 0.15s ease,
     color 0.15s ease,
-    opacity 0.15s ease;
+    transform 0.15s ease;
 }
 
 .button:disabled {
@@ -23,8 +24,8 @@
 }
 
 .primary {
+  color: #08131d;
   background: var(--color-accent);
-  color: #fff;
 }
 
 .primary:hover:not(:disabled) {
@@ -32,20 +33,21 @@
 }
 
 .secondary {
-  background: var(--color-surface-elevated);
   color: var(--color-text);
   border-color: var(--color-border);
+  background: var(--color-surface-elevated);
 }
 
 .secondary:hover:not(:disabled) {
-  border-color: var(--color-text-muted);
+  border-color: color-mix(in srgb, var(--color-accent) 32%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface-elevated));
 }
 
 .ghost {
+  color: var(--color-text);
   background: transparent;
-  color: var(--color-accent);
 }
 
 .ghost:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
 }

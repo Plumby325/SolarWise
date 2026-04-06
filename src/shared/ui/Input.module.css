@@ -1,24 +1,24 @@
 .wrap {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
+  width: min(100%, 360px);
 }
 
 .label {
-  font-size: 0.8125rem;
+  display: inline-block;
+  margin-bottom: var(--space-xs);
+  font-size: 0.875rem;
   font-weight: 600;
-  color: var(--color-text-muted);
+  color: var(--color-text);
 }
 
 .input {
   width: 100%;
   min-height: 42px;
   padding: 0 var(--space-md);
-  border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
-  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  font: inherit;
   color: var(--color-text);
-  font-size: 0.9375rem;
+  background: var(--color-surface-elevated);
   outline: none;
   transition:
     border-color 0.15s ease,
@@ -27,16 +27,15 @@
 
 .input::placeholder {
   color: var(--color-text-muted);
-  opacity: 0.8;
 }
 
 .input:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 25%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 55%, var(--color-border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent);
 }
 
 .input:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
@@ -45,12 +44,11 @@
 }
 
 .inputError:focus {
-  border-color: var(--color-danger);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 22%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 18%, transparent);
 }
 
 .error {
-  margin: 0;
+  margin: var(--space-xs) 0 0;
   font-size: 0.8125rem;
   color: var(--color-danger);
 }

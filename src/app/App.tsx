@@ -1,8 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { DashboardPage } from '@/features/dashboard/presentation/components/DashboardPage'
-import { HomePage } from '@/features/home/presentation/components/HomePage'
-import { SettingsPage } from '@/features/settings/presentation/components/SettingsPage'
-import { AppLayout } from '@/shared/components/layout/AppLayout'
+import { DashboardPage } from '@/features/dashboard'
+import { HomePage } from '@/features/home'
+import { SettingsPage } from '@/features/settings'
+import { AppLayout } from '@/shared/layout/AppLayout'
 
 export default function App() {
   return (

@@ -1,205 +1,153 @@
-﻿# SolarWise Frontend Style Guide (Vite + React)
+# SolarWise Frontend Style Guide
 
-이 문서는 현재 `SolarWise` 프로젝트의 **실제 코드 구조**를 기준으로 작성한 스타일 가이드입니다.
-다른 프레임워크(예: Next.js App Router) 기준 문서는 적용하지 않습니다.
+이 문서는 SolarWise 프론트엔드의 실제 구조를 기준으로 한 작업 규칙입니다.
 
-## 1. 아키텍처 원칙
-
-- `app`: 앱 실행 진입점과 라우팅 조합
-- `features`: 기능 단위 UI/로직 모듈
-- `shared`: 기능에 종속되지 않는 공통 컴포넌트/스타일
-- `api`: 서버 통신 계층 (현재 확장 예정)
-
-의존성 방향 원칙:
-- `app -> features -> shared`
-- `features -> shared`
-- `shared`는 `features`를 참조하지 않음
-
-## 2. 현재 표준 디렉토리 구조
+## 1. 기본 구조
 
 ```text
 src/
 ├── app/
-│   ├── main.tsx                      # Vite 엔트리 (React mount)
-│   └── App.tsx                       # 라우트 조합
-│
+├── api/
 ├── features/
-│   ├── home/
-│   │   └── presentation/
-│   │       └── components/
-│   │           ├── HomePage.tsx
-│   │           └── HomePage.module.css
-│   ├── dashboard/
-│   │   └── presentation/
-│   │       └── components/
-│   │           └── DashboardPage.tsx
-│   └── settings/
-│       └── presentation/
-│           └── components/
-│               └── SettingsPage.tsx
-│
 ├── shared/
-│   ├── components/
-│   │   ├── layout/
-│   │   │   ├── AppLayout.tsx
-│   │   │   └── AppLayout.module.css
-│   │   └── ui/
-│   │       ├── Button.tsx
-│   │       ├── Button.module.css
-│   │       ├── Card.tsx
-│   │       ├── Card.module.css
-│   │       ├── Input.tsx
-│   │       └── Input.module.css
-│   └── styles/
-│       └── Page.module.css
-│
-├── api/                              # API 통신 코드 추가 예정
-├── index.css                         # 전역 스타일 토큰/리셋
+├── index.css
 └── vite-env.d.ts
 ```
 
-## 3. app 레이어 규칙
+## 2. 현재 디렉토리 구조
 
-### 3.1 `src/app/main.tsx`
-역할:
-- React DOM mount
-- 라우터/Provider 연결
-- 전역 CSS import
-
-규칙:
-- 비즈니스 로직 작성 금지
-- 화면 컴포넌트 직접 작성 금지
-- 앱 초기화 코드만 배치
-
-### 3.2 `src/app/App.tsx`
-역할:
-- 라우트 트리 정의
-- 공통 레이아웃 연결
-
-규칙:
-- API 호출 금지
-- 복잡한 상태 로직 금지
-- 페이지 조합 전용
-
-## 4. feature 레이어 규칙
-
-현재는 `presentation` 중심으로 운영합니다.
+아래 트리는 현재 `src/` 기준의 실제 구조를 요약한 것입니다.
 
 ```text
-features/{feature}/presentation/components
+src/
+├── api/
+│   ├── client.ts                    # 공통 fetch 래퍼
+│   └── index.ts                     # api 공개 진입점
+├── app/
+│   ├── App.tsx                      # 라우트 조합
+│   └── main.tsx                     # React 마운트 엔트리
+├── features/
+│   ├── dashboard/
+│   │   ├── components/
+│   │   │   └── DashboardPage.tsx    # 대시보드 화면
+│   │   └── index.ts                 # feature 공개 진입점
+│   ├── home/
+│   │   ├── components/
+│   │   │   ├── HomePage.tsx         # 홈 화면
+│   │   │   └── HomePage.module.css  # 홈 화면 전용 스타일
+│   │   ├── hooks/
+│   │   │   └── useHomeForm.ts       # 홈 화면 상태/이벤트 로직
+│   │   ├── types/
+│   │   │   └── home.ts              # 홈 화면 전용 타입
+│   │   └── index.ts                 # feature 공개 진입점
+│   └── settings/
+│       ├── components/
+│       │   └── SettingsPage.tsx     # 설정 화면
+│       └── index.ts                 # feature 공개 진입점
+├── shared/
+│   ├── components/                  # 현재 비어 있음, 신규 공용 컴포넌트는 ui/layout 우선 사용
+│   ├── layout/
+│   │   ├── AppLayout.tsx            # 공통 앱 셸
+│   │   └── AppLayout.module.css     # 레이아웃 스타일
+│   ├── styles/
+│   │   └── Page.module.css          # 페이지 공통 타이포/간격 스타일
+│   └── ui/
+│       ├── Button.tsx
+│       ├── Button.module.css
+│       ├── Card.tsx
+│       ├── Card.module.css
+│       ├── Input.tsx
+│       └── Input.module.css
+├── index.css                        # 전역 디자인 토큰과 리셋
+└── vite-env.d.ts                    # Vite 타입 선언
 ```
 
-각 파일 역할:
-- `*Page.tsx`: 기능 화면 컴포넌트
-- `*.module.css`: 해당 화면 전용 스타일
+## 3. 레이어별 책임
 
-향후 복잡도 증가 시 다음 구조로 확장:
+### `app`
+
+- 앱 진입점, 라우팅, 전역 조합만 담당합니다.
+- 비즈니스 로직이나 기능별 상태를 직접 담지 않습니다.
+- 현재 파일:
+  - `main.tsx`: React 앱 마운트
+  - `App.tsx`: 라우트 정의 및 레이아웃 조합
+
+### `features`
+
+- 기능 단위로 코드를 묶습니다.
+- 기본 하위 구조는 아래 중 필요한 것만 사용합니다.
 
 ```text
-features/{feature}/
-├── domain/
-├── application/
-└── presentation/
+features/example/
+├── components/
+├── hooks/
+├── services/
+├── types/
+└── index.ts
 ```
 
-확장 기준:
-- 순수 비즈니스 규칙 분리 필요 -> `domain`
-- 커스텀 훅/상태 orchestration 필요 -> `application`
-- 화면 렌더링 전용 -> `presentation`
+- `components/`: 화면과 기능 전용 UI
+- `hooks/`: 상태 관리와 화면 동작 로직
+- `services/`: feature 전용 가공 로직, API 호출 조합
+- `types/`: feature 전용 타입
+- `index.ts`: 외부에 공개할 진입점
+- 현재 feature 구성:
+  - `home`: 화면, hook, type이 모두 존재하는 기준 feature
+  - `dashboard`: 화면 중심의 단순 feature
+  - `settings`: 화면 중심의 단순 feature
 
-## 5. shared 레이어 규칙
+### `shared`
 
-### 5.1 `shared/components/ui`
-- 버튼/입력/카드처럼 재사용 가능한 순수 UI
-- 특정 feature 문맥(예: 주문, 회원 등)을 몰라야 함
-
-### 5.2 `shared/components/layout`
-- 앱 공통 레이아웃 (헤더/사이드바/푸터)
-
-### 5.3 `shared/styles`
-- 여러 feature에서 재사용하는 스타일 모듈
-- 예: `Page.module.css`
-
-금지:
-- `shared`에서 `features` import
-
-## 6. import 규칙
-
-`@` alias를 기본으로 사용합니다.
-
-설정:
-- `tsconfig.app.json`: `@/* -> src/*`
-- `vite.config.ts`: `@: '/src'`
-
-권장:
-- `import { AppLayout } from '@/shared/components/layout/AppLayout'`
-- `import { HomePage } from '@/features/home/presentation/components/HomePage'`
-
-예외:
-- 같은 폴더 내 파일은 상대경로 허용
-
-## 7. 네이밍 규칙
-
-- 컴포넌트 파일: PascalCase (`HomePage.tsx`, `AppLayout.tsx`)
-- 스타일 모듈: 컴포넌트명 + `.module.css`
-- 훅: `use` 접두사 + camelCase (`useAuth.ts`)
-- 변수/함수: camelCase
-- 상수: SCREAMING_SNAKE_CASE
-- Props 타입: `컴포넌트명 + Props`
-
-약어 지침:
-- 허용: `id`, `url`, `api`, `ui`
-- 지양: `req`, `res`, `btn`, `img`, `idx`
-
-## 8. 스타일링 규칙
-
-- 기본: CSS Modules (`*.module.css`)
-- 전역 토큰/리셋: `src/index.css`
-- 컴포넌트별 스타일은 해당 컴포넌트 옆에 배치
-- 공통 패턴 스타일은 `shared/styles`로 올림
-
-권장 순서:
-1. 레이아웃
-2. 박스 모델
-3. 타이포
-4. 시각(색/배경/테두리)
-5. 애니메이션/전환
-
-## 9. API 계층 규칙 (추가 시)
+- 여러 feature에서 함께 쓰는 공용 자원을 둡니다.
 
 ```text
-src/api/
-├── client.ts
-└── endpoints/
-    ├── auth.ts
-    ├── dashboard.ts
-    └── settings.ts
+shared/
+├── layout/
+├── styles/
+└── ui/
 ```
 
-규칙:
-- 모든 API 호출은 `api/endpoints/*` 함수로 캡슐화
-- 컴포넌트에서 `fetch`/`axios` 직접 호출 금지
-- 공통 응답 타입은 `shared/types`로 분리
+- `layout/`: 앱 셸, 내비게이션, 공통 배치
+- `ui/`: Button, Input, Card 같은 범용 컴포넌트
+- `styles/`: 페이지 공통 스타일, 토큰 보조 스타일
+- `components/`:
+  현재 비어 있습니다. 새 공용 코드는 먼저 `ui` 또는 `layout`에 둘 수 있는지 검토하고, 둘 다 아닌 경우에만 별도 하위 폴더를 추가합니다.
 
-## 10. 구현 체크리스트
+### `api`
 
-새 기능 추가 시:
-- [ ] `features/{name}/presentation/components` 생성
-- [ ] `*Page.tsx` + `*.module.css` 생성
-- [ ] `src/app/App.tsx` 라우트 등록
-- [ ] 공통 UI 재사용 가능성 검토 (`shared/components/ui`)
-- [ ] 중복 스타일은 `shared/styles`로 승격
+- 공통 API 클라이언트와 엔드포인트를 둡니다.
+- `fetch` 래퍼, 인증 헤더, 에러 처리 규칙을 이곳에서 통일합니다.
+- 현재 파일:
+  - `client.ts`: 공통 HTTP 요청 래퍼
+  - `index.ts`: 외부 노출용 엔트리
 
-PR 전 확인:
-- [ ] `npm run build` 통과
-- [ ] import alias(`@`) 경로 오류 없음
-- [ ] `shared -> features` 역참조 없음
-- [ ] 사용하지 않는 코드/스타일 제거
+## 4. 디렉토리별 간단 설명
 
-## 11. 이 프로젝트에서 명확히 구분할 점
+- `src/app`: 앱 시작점과 라우팅만 둡니다.
+- `src/api`: 네트워크 호출 공통 규칙과 API 함수 진입점을 둡니다.
+- `src/features`: 사용자 기능 단위 코드를 둡니다.
+- `src/features/*/components`: 해당 기능에만 속한 화면 컴포넌트를 둡니다.
+- `src/features/*/hooks`: 해당 기능의 상태와 이벤트 로직을 둡니다.
+- `src/features/*/types`: 해당 기능의 전용 타입을 둡니다.
+- `src/features/*/services`: API 호출 조합이나 데이터 가공이 커질 때 추가합니다.
+- `src/features/*/index.ts`: 다른 레이어에서 import할 공개 API 역할을 합니다.
+- `src/shared/layout`: 앱 전체에서 공통으로 쓰는 레이아웃을 둡니다.
+- `src/shared/ui`: 범용 UI 컴포넌트를 둡니다.
+- `src/shared/styles`: 여러 화면에서 공통으로 쓰는 스타일 모듈을 둡니다.
+- `src/index.css`: 전역 CSS 변수와 reset 스타일을 둡니다.
+- `src/vite-env.d.ts`: Vite 타입 확장을 둡니다.
 
-- `src/app/main.tsx`는 **페이지 파일이 아니라 엔트리 파일**입니다.
-- `src/app/App.tsx`는 **라우트 조합 파일**입니다.
-- 실제 화면 단위는 `src/features/*/presentation/components/*Page.tsx`입니다.
+## 5. 의존 규칙
 
-이 기준을 SolarWise의 기본 규칙으로 사용합니다.
+- `app`은 `features`, `shared`를 조합할 수 있습니다.
+- `features`는 `shared`, `api`를 사용할 수 있습니다.
+- `shared`는 특정 `feature`를 참조하지 않습니다.
+- 한 feature가 다른 feature의 내부 경로를 직접 참조하지 않습니다.
+
+## 6. 구현 규칙
+
+- 페이지가 커지면 상태 로직은 먼저 `hooks/`로 분리합니다.
+- 공통성이 생기기 전까지는 `shared`로 올리지 않습니다.
+- 외부에서 feature를 사용할 때는 내부 파일 경로 대신 `index.ts`를 우선 사용합니다.
+- API 연동이 시작되면 컴포넌트 내부 `fetch`는 `api` 또는 feature `services`로 이동합니다.
+- 새 feature를 만들 때는 최소한 `components/`와 `index.ts`부터 시작하고, 상태가 생기면 `hooks/`, 타입이 늘어나면 `types/`를 추가합니다.

@@ -1,21 +1,11 @@
-import { useState } from 'react'
-import { Button } from '@/shared/components/ui/Button'
-import { Card } from '@/shared/components/ui/Card'
-import { Input } from '@/shared/components/ui/Input'
+import { Button } from '@/shared/ui/Button'
+import { Card } from '@/shared/ui/Card'
+import { Input } from '@/shared/ui/Input'
+import { useHomeForm } from '../hooks/useHomeForm'
 import styles from './HomePage.module.css'
 
 export function HomePage() {
-  const [name, setName] = useState('')
-  const [nameError, setNameError] = useState('')
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!name.trim()) {
-      setNameError('이름을 입력해 주세요.')
-      return
-    }
-    setNameError('')
-  }
+  const { name, nameError, handleSubmit, handleNameChange } = useHomeForm()
 
   return (
     <div className={styles.page}>
@@ -46,10 +36,7 @@ export function HomePage() {
               label="이름"
               placeholder="홍길동"
               value={name}
-              onChange={(e) => {
-                setName(e.target.value)
-                if (nameError) setNameError('')
-              }}
+              onChange={handleNameChange}
               error={nameError}
             />
             <Button type="submit">제출</Button>
