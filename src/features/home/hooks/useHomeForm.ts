@@ -3,32 +3,37 @@ import type { ChangeEvent, FormEvent } from 'react'
 import type { HomeFormState } from '../types/home'
 
 export function useHomeForm() {
-  const [name, setName] = useState<HomeFormState['name']>('')
-  const [nameError, setNameError] = useState<HomeFormState['nameError']>('')
+  const [address, setAddress] = useState<HomeFormState['address']>('')
+  const [addressError, setAddressError] = useState<HomeFormState['addressError']>('')
+  const [submittedAddress, setSubmittedAddress] = useState<HomeFormState['submittedAddress']>('')
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
-    if (!name.trim()) {
-      setNameError('이름을 입력해 주세요.')
+    const trimmedAddress = address.trim()
+
+    if (!trimmedAddress) {
+      setAddressError('발전소 주소 또는 지역명을 입력해 주세요.')
       return
     }
 
-    setNameError('')
+    setAddressError('')
+    setSubmittedAddress(trimmedAddress)
   }
 
-  function handleNameChange(e: ChangeEvent<HTMLInputElement>) {
-    setName(e.target.value)
+  function handleAddressChange(e: ChangeEvent<HTMLInputElement>) {
+    setAddress(e.target.value)
 
-    if (nameError) {
-      setNameError('')
+    if (addressError) {
+      setAddressError('')
     }
   }
 
   return {
-    name,
-    nameError,
+    address,
+    addressError,
+    submittedAddress,
     handleSubmit,
-    handleNameChange,
+    handleAddressChange,
   }
 }

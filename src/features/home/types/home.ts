@@ -1,4 +1,5 @@
 export type HomeFormState = {
-  name: string
-  nameError: string
+  address: string
+  addressError: string
+  submittedAddress: string
 }

@@ -7,8 +7,8 @@ import { AppLayout } from '@/shared/layout/AppLayout'
 export default function App() {
   return (
     <Routes>
+      <Route path="/" element={<HomePage />} />
       <Route element={<AppLayout />}>
-        <Route path="/" element={<HomePage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
