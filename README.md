@@ -1,12 +1,18 @@
 # SolarWise 프론트엔드
 
-React + TypeScript + Vite 기반의 SolarWise 프론트엔드입니다.
+React + TypeScript + Vite 기반의 SolarWise 프론트엔드입니다. 현재는 랜딩 페이지, 로그인/회원가입 화면, 대시보드/설정 기본 화면까지 포함한 단일 SPA 구조로 되어 있습니다.
 
 ## 실행 방법
 
 ```bash
 npm install
 npm run dev
+```
+
+기본 개발 서버 주소:
+
+```text
+http://localhost:5173
 ```
 
 | 명령어 | 설명 |
@@ -16,90 +22,126 @@ npm run dev
 | `npm run lint` | ESLint 검사 |
 | `npm run preview` | 빌드 결과 미리보기 |
 
+## Docker 실행 방법
+
+Docker Desktop 실행 후 프로젝트 루트에서 아래 명령을 실행합니다.
+
+```bash
+docker build -t solarwise .
+docker run --rm -p 5173:5173 solarwise
+```
+
+접속 주소:
+
+```text
+http://localhost:5173
+```
+
 ## 현재 아키텍처 구조
 
-이 프로젝트는 React + TypeScript + Vite 기반의 단일 프론트엔드 앱이며, 현재 `app / features / shared / api` 레이어로 구조화되어 있습니다.
+이 프로젝트는 `app / features / shared / api` 구조를 기준으로 구성되어 있습니다.
 
 ```text
 src/
 ├── app/                         # 앱 진입점과 라우팅
-│   ├── App.tsx                  # 전체 라우트 정의
-│   └── main.tsx                 # BrowserRouter 및 React 마운트
-├── api/
-│   ├── client.ts                # fetch 기반 공통 API 클라이언트
-│   └── index.ts                 # API 레이어 export
-├── features/                    # 기능 단위 모듈
+│   ├── App.tsx
+│   └── main.tsx
+├── api/                         # 공통 API 클라이언트
+│   ├── client.ts
+│   └── index.ts
+├── features/                    # 화면 단위 기능 모듈
 │   ├── dashboard/
 │   │   ├── components/
 │   │   └── index.ts
 │   ├── home/
-│   │   ├── components/          # 랜딩 페이지 UI
-│   │   ├── hooks/               # 홈 입력 폼 상태
-│   │   ├── types/               # 홈 전용 타입
+│   │   ├── components/
+│   │   ├── hooks/
+│   │   ├── types/
 │   │   └── index.ts
-│   └── settings/
+│   ├── login/
+│   │   ├── components/
+│   │   └── index.ts
+│   ├── settings/
+│   │   ├── components/
+│   │   └── index.ts
+│   └── signup/
 │       ├── components/
 │       └── index.ts
 ├── shared/                      # 공통 레이아웃, UI, 스타일
 │   ├── layout/
-│   │   └── AppLayout.tsx
 │   ├── styles/
 │   └── ui/
-├── index.css                    # 전역 스타일과 리셋
+├── index.css                    # 전역 스타일
 └── vite-env.d.ts
 ```
 
-## 구조 요약
-
-- `app` 레이어는 앱 초기화와 라우팅만 담당합니다.
-- `src/app/main.tsx`에서 `BrowserRouter`를 연결하고 `src/app/App.tsx`에서 `/`, `/dashboard`, `/settings` 라우트를 구성합니다.
-- 홈(`/`)은 `features/home`의 독립 랜딩 페이지이며, 대시보드와 설정만 `src/shared/layout/AppLayout.tsx`를 공통 레이아웃 셸로 사용합니다.
-- `features`는 화면 단위 기능 모듈입니다. 현재 `home`, `dashboard`, `settings`로 분리되어 있습니다.
-- `home` feature는 하나의 랜딩 페이지 안에 히어로, 지표 카드, 문제 정의, 분석 흐름, CTA, 푸터 섹션을 포함합니다.
-- `home` feature는 `hooks/useHomeForm.ts`에서 주소 입력 상태와 제출값을 로컬 state로 관리합니다.
-- 전역 상태 관리 라이브러리는 아직 도입되지 않았고, 상태는 각 feature 내부 훅과 React state로 관리합니다.
-- `api/client.ts`에는 `fetch` 기반 공통 API 클라이언트가 있으며, 추후 엔드포인트 함수들을 이 레이어에 확장할 수 있습니다.
-- 공통 UI 컴포넌트와 스타일은 `shared/ui`, `shared/styles`, CSS Modules를 중심으로 관리합니다.
-- 경로 별칭 `@/`를 사용해 `src` 하위 모듈을 참조합니다.
-
 ## 라우팅 구조
+
+`src/app/main.tsx`에서 `BrowserRouter`를 연결하고, `src/app/App.tsx`에서 라우트를 정의합니다.
 
 ```text
 /              -> HomePage
+/login         -> LoginPage
+/signup        -> SignupPage
 /dashboard     -> AppLayout + DashboardPage
 /settings      -> AppLayout + SettingsPage
 *              -> / 로 리다이렉트
 ```
 
-- `HomePage`는 마케팅/소개 성격의 랜딩 페이지입니다.
-- `DashboardPage`, `SettingsPage`는 공통 레이아웃 안에서 동작하는 내부 화면입니다.
+- `/`, `/login`, `/signup`은 공통 레이아웃 없이 동작하는 독립 페이지입니다.
+- `/dashboard`, `/settings`만 `shared/layout/AppLayout.tsx` 안에서 렌더링됩니다.
 
-## 레이어 규칙
+## 레이어 설명
 
 ### `app`
 
-- 앱 진입점, 라우팅, 전역 조합만 담당합니다.
-- 비즈니스 로직이나 기능별 상태를 직접 두지 않습니다.
+- 앱 진입점과 라우팅만 담당합니다.
+- `main.tsx`에서 React 앱을 마운트하고 `BrowserRouter`를 연결합니다.
+- `App.tsx`에서 전체 페이지 라우트를 조합합니다.
 
 ### `features`
 
-- 사용자 기능 단위로 코드를 묶습니다.
-- 기능 내부에는 `components`, `hooks`, `types`, 필요 시 `services`를 둡니다.
-- 외부에서는 가능하면 각 feature의 `index.ts`를 통해 접근합니다.
+- 사용자 기능 단위로 화면을 나눕니다.
+- 각 feature는 자체 `components`와 필요 시 `hooks`, `types`를 가집니다.
+- 외부에서는 각 feature의 `index.ts`를 통해 페이지를 가져옵니다.
+
+현재 feature 구성:
+
+- `home`: 랜딩 페이지. 히어로, 소개 섹션, CTA, 푸터 등 마케팅 성격의 UI를 포함합니다.
+- `login`: 로그인 화면. 이메일/비밀번호 입력 검증 후 `/dashboard`로 이동합니다.
+- `signup`: 회원가입 화면. 이름/이메일/비밀번호/보유 상태 입력 검증 후 `/dashboard`로 이동합니다.
+- `dashboard`: 대시보드 기본 화면입니다.
+- `settings`: 설정 기본 화면입니다.
 
 ### `shared`
 
-- 특정 feature에 종속되지 않는 공용 UI와 레이아웃을 둡니다.
-- 범용 컴포넌트, 공통 스타일, 레이아웃 셸만 위치시킵니다.
+- 여러 feature에서 재사용하는 공통 레이어입니다.
+- `shared/layout/AppLayout.tsx`에 상단 헤더, 사이드바, `Outlet`, 푸터가 들어 있습니다.
+- `shared/ui`에는 `Button`, `Card`, `Input` 같은 공용 UI 컴포넌트가 있습니다.
+- `shared/styles/Page.module.css`는 기본 페이지 레이아웃 스타일에 사용됩니다.
 
 ### `api`
 
-- 공통 HTTP 클라이언트와 API 요청 함수를 둡니다.
-- 화면 컴포넌트에서 직접 네트워크 호출이 늘어나면 이 레이어로 이동합니다.
+- 공통 HTTP 호출 유틸을 담당합니다.
+- 현재 `api/client.ts`에는 `fetch` 기반 `apiClient<T>()`만 있습니다.
+- 아직 각 feature에서 도메인별 API 모듈을 사용하고 있지는 않습니다.
 
-## 현재 상태
+## 상태 관리
 
-- 홈 화면은 시안 기반 랜딩 페이지로 구현되어 있으며, feature 내부 훅으로 주소 입력 상태와 검증을 분리했습니다.
-- 대시보드와 설정 화면은 현재 기본 페이지 구조 중심으로 준비되어 있습니다.
-- 공통 레이아웃과 공용 UI 컴포넌트는 `shared` 레이어에서 재사용합니다.
-- 백엔드 구현은 이 저장소에 포함되어 있지 않으며, API 명세는 루트의 `API.md` 문서를 참고합니다.
+- 전역 상태 관리 라이브러리는 아직 사용하지 않습니다.
+- 홈 화면은 `features/home/hooks/useHomeForm.ts`에서 로컬 폼 상태를 관리합니다.
+- 로그인/회원가입 화면은 각 페이지 컴포넌트 내부 `useState`로 입력값과 검증 상태를 관리합니다.
+
+## 스타일링
+
+- 전역 스타일은 `src/index.css`에 있습니다.
+- 페이지와 컴포넌트 스타일은 CSS Modules(`*.module.css`)로 관리합니다.
+- 경로 별칭 `@/`를 사용해 `src` 하위 모듈을 참조합니다.
+
+## 현재 구현 상태
+
+- 홈 화면은 독립 랜딩 페이지로 구현되어 있습니다.
+- 로그인/회원가입 화면은 클라이언트 검증 중심의 UI로 구현되어 있습니다.
+- 대시보드와 설정은 현재 플레이스홀더 수준의 기본 화면입니다.
+- 공통 레이아웃은 대시보드와 설정에만 적용됩니다.
+- 백엔드 API 명세는 루트의 `API.md`를 참고할 수 있지만, 현재 프론트엔드에서는 공통 `apiClient`만 준비된 상태입니다.

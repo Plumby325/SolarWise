@@ -1,175 +1,201 @@
 import { Link } from 'react-router-dom'
-import { Button } from '@/shared/ui/Button'
-import { useHomeForm } from '../hooks/useHomeForm'
 import styles from './HomePage.module.css'
 
-const stats = [
-  { value: '1,240+', label: '누적 진단 프로젝트' },
-  { value: '38,500 MWh', label: '분석 완료 발전량' },
-  { value: '94.7%', label: '예측 모델 평균 정확도' },
-  { value: '31%', label: '보고서 작성 시간 절감' },
+const metrics = [
+  { value: '1,240+', label: '연동 발전소' },
+  { value: '38,500 MWh', label: '누적 모니터링 발전량' },
+  { value: '94.7%', label: 'AI 결함 감지 정확도' },
+  { value: '31%', label: '평균 유지보수 비용 절감' },
 ] as const
 
-const painPoints = [
-  {
-    title: '데이터 분산 관리',
-    description: '현장 센서, 기상 데이터, 점검 결과가 분리되어 의사결정 속도가 느려집니다.',
-  },
-  {
-    title: '수작업 리포트',
-    description: '운영 리포트를 매번 수기로 정리하느라 반복 작업이 커집니다.',
-  },
-  {
-    title: '발전량 예측 어려움',
-    description: '입지와 계절성, 설비 상태를 한 번에 비교하기 어렵습니다.',
-  },
-  {
-    title: '사후 대응 중심 운영',
-    description: '이상 징후를 조기에 발견하지 못해 장애 대응이 늦어질 수 있습니다.',
-  },
-] as const
-
-const workflowSteps = [
+const problems = [
   {
     id: '01',
-    title: '입지 정보 입력',
-    description: '주소, 일사량, 기상 조건을 기준으로 후보지를 정리합니다.',
+    title: '패널 먼지 방치',
+    description: '먼지 밀도가 일정 수준을 넘기면 출력 전력이 크게 감소할 수 있습니다.',
+    impact: '출력 -34%',
   },
   {
     id: '02',
-    title: '발전량 예측',
-    description: 'AI 모델이 예상 발전량과 계절별 편차를 빠르게 요약합니다.',
+    title: '사후 고장 대응',
+    description: '고장 발생 후에야 알게 되는 구조로 가동 중단 손실이 누적됩니다.',
+    impact: '비용 손실',
   },
   {
     id: '03',
-    title: '이상 신호 진단',
-    description: '출력 저하, 장비 이상 가능성을 우선순위로 정렬합니다.',
+    title: '발전량 예측 불가',
+    description: '기상 변동에 따른 불확실성으로 정확한 수익 계획 수립이 어렵습니다.',
+    impact: '수익 불확실',
   },
   {
     id: '04',
-    title: '보고서 자동 생성',
-    description: '운영팀과 고객에게 공유할 핵심 결과를 문서 형식으로 묶습니다.',
+    title: 'AI 판단 근거 불명',
+    description: '기존 시스템은 왜 그런 판단을 내렸는지 명확하게 설명해주지 않습니다.',
+    impact: '블랙박스',
   },
 ] as const
 
-const benefits = [
-  { step: '01', title: '빠른 의사결정', description: '검토 시간을 줄이고 후보지 비교를 단순화합니다.' },
-  { step: '02', title: '정확한 진단', description: '운영 데이터 기반으로 이상 패턴을 빠르게 확인합니다.' },
-  { step: '03', title: '대시보드 연계', description: '분석 결과를 대시보드 화면으로 자연스럽게 확장할 수 있습니다.' },
-  { step: '04', title: '스케일 대응', description: '여러 발전소를 동일한 구조로 운영할 수 있도록 준비합니다.' },
+const featureTabs = [
+  {
+    title: '실시간 발전량 트래킹',
+    description: '인버터와 센서 데이터를 시계열 차트로 통합 시각화하고, 온도와 일사량까지 함께 봅니다.',
+  },
+  {
+    title: 'AI 발전량 예측 (2~3일)',
+    description: '',
+  },
+  {
+    title: '패널 이상 감지',
+    description: '',
+  },
+  {
+    title: 'XAI 설명 리포트',
+    description: '',
+  },
+  {
+    title: '예지 정비 알림',
+    description: '',
+  },
+] as const
+
+const steps = [
+  {
+    step: '01',
+    title: '회원가입',
+    description: '가입 즉시 모든 기능 무료 이용',
+    tone: 'blue',
+  },
+  {
+    step: '02',
+    title: '발전소 연동',
+    description: '인버터·센서 API 자동 지원',
+    tone: 'green',
+  },
+  {
+    step: '03',
+    title: '데이터 분석',
+    description: '실시간 발전량과 기상·이미지 자동 수집',
+    tone: 'orange',
+  },
+  {
+    step: '04',
+    title: 'AI 인사이트',
+    description: '예측·결함·알림 자동 정리',
+    tone: 'blue',
+  },
 ] as const
 
 const footerColumns = [
   {
     title: '서비스',
-    links: ['입지 분석', '발전량 예측', '운영 진단'],
+    links: ['실시간 모니터링', 'AI 예측', '결함 감지', 'XAI 리포트'],
   },
   {
-    title: '문서',
-    links: ['API 안내', '아키텍처 소개', '사용 가이드'],
+    title: '팀',
+    links: ['팀 소개', '파트너십'],
   },
   {
-    title: '문의',
-    links: ['도입 상담', '파트너십', '기술 지원'],
+    title: '리소스',
+    links: ['블로그', '기술 문서', 'FAQ'],
   },
 ] as const
 
 export function HomePage() {
-  const { address, addressError, submittedAddress, handleSubmit, handleAddressChange } = useHomeForm()
+  const heroBars = [45, 58, 72, 62, 78, 55, 46, 60] as const
 
   return (
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.container}>
           <div className={styles.headerInner}>
-            <Link to="/" className={styles.brand}>
-              SolarWise
+            <Link to="/" className={styles.brand} aria-label="SolarWise 홈">
+              <span className={styles.brandSun} />
+              <span className={styles.brandTextPrimary}>Solar</span>
+              <span className={styles.brandTextAccent}>Wise</span>
             </Link>
 
             <nav className={styles.nav} aria-label="홈 페이지 메뉴">
-              <a href="#problems">문제 정의</a>
-              <a href="#workflow">해결 구조</a>
-              <a href="#benefits">기대 효과</a>
+              <a href="#about">서비스 소개</a>
               <Link to="/dashboard">대시보드</Link>
+              <a href="#resources">리소스</a>
+              <a href="#team">팀 소개</a>
             </nav>
 
-            <Button type="button" className={styles.headerButton}>
-              도입 문의하기
-            </Button>
+            <div className={styles.headerActions}>
+              <Link to="/login" className={styles.loginLink}>
+                로그인
+              </Link>
+              <Link to="/signup" className={styles.headerButton}>
+                무료로 시작하기 →
+              </Link>
+            </div>
           </div>
         </div>
       </header>
 
       <main>
-        <section className={styles.hero}>
+        <section id="about" className={styles.hero}>
           <div className={[styles.container, styles.heroInner].join(' ')}>
             <div className={styles.heroContent}>
-              <span className={styles.eyebrow}>AI ENERGY ANALYSIS PLATFORM</span>
-              <h1 className={styles.heroTitle}>AI로 태양광 발전소를 더 스마트하게 관리하세요</h1>
-              <p className={styles.heroLead}>
-                입지 분석부터 발전량 예측, 운영 이상 징후 진단까지 하나의 흐름으로 연결해
-                실무자가 바로 판단할 수 있는 홈 화면을 구성했습니다.
-              </p>
+              <div className={styles.heroBadge}>
+                <span className={styles.heroBadgeDot} />
+                회원가입만 하면 모든 기능 무료
+              </div>
 
-              <form className={styles.heroForm} onSubmit={handleSubmit} noValidate>
-                <label htmlFor="site-address" className={styles.formLabel}>
-                  발전소 주소 또는 지역명
-                </label>
-                <div className={styles.formRow}>
-                  <input
-                    id="site-address"
-                    className={styles.searchInput}
-                    placeholder="예: 전남 영암군 삼호읍 / 충남 서산시 대산읍"
-                    value={address}
-                    onChange={handleAddressChange}
-                    aria-invalid={addressError ? true : undefined}
-                    aria-describedby={addressError ? 'site-address-error' : undefined}
-                  />
-                  <Button type="submit" className={styles.primaryButton}>
-                    분석 시작하기
-                  </Button>
-                </div>
-                {addressError ? (
-                  <p id="site-address-error" className={styles.error} role="alert">
-                    {addressError}
-                  </p>
-                ) : null}
-              </form>
+              <h1 className={styles.heroTitle}>
+                <span>AI로 태양광 발전소를</span>
+                <span>더 스마트하게</span>
+                <span className={styles.heroTitleAccent}>관리하세요</span>
+              </h1>
+
+              <p className={styles.heroLead}>실시간 발전량 트래킹부터 AI 결함 감지, 발전량 예측까지 SolarWise 하나로 해결합니다.</p>
 
               <div className={styles.heroActions}>
-                <Button type="button" variant="secondary" className={styles.secondaryButton}>
-                  빠른 견적 받기
-                </Button>
-                <a className={styles.inlineLink} href="#workflow">
-                  분석 흐름 보기
-                </a>
+                <Link to="/signup" className={styles.primaryButton}>
+                  무료 회원가입하기 →
+                </Link>
+                <button type="button" className={styles.secondaryButton}>
+                  ▶ 데모 영상 보기
+                </button>
               </div>
             </div>
 
             <div className={styles.heroPreview}>
-              <div className={styles.previewPanel}>
+              <div className={styles.previewPanel} aria-hidden="true">
                 <div className={styles.previewHeader}>
-                  <span className={styles.previewBadge}>LIVE PREVIEW</span>
-                  <span className={styles.previewMeta}>AI 진단 준비 완료</span>
+                  <span className={styles.previewDot} />
+                  <span className={styles.previewDot} />
+                  <span className={styles.previewDot} />
                 </div>
 
-                <div className={styles.previewCanvas}>
-                  <div className={styles.previewGlow} />
-                  <div className={styles.previewMarker}>
-                    <span className={styles.previewMarkerLabel}>추천 부지</span>
-                    <strong>{submittedAddress || '입지를 입력하면 예측 카드가 활성화됩니다.'}</strong>
-                  </div>
+                <div className={styles.previewStats}>
+                  <article className={styles.previewStatCard}>
+                    <span>오늘 발전량</span>
+                    <strong>7,175 kWh</strong>
+                    <em>↑ 전일 대비 +4.2%</em>
+                  </article>
+                  <article className={styles.previewStatCard}>
+                    <span>이상 감지</span>
+                    <strong className={styles.warningValue}>4개소</strong>
+                    <em className={styles.warningText}>즉시 확인 필요</em>
+                  </article>
+                </div>
 
-                  <div className={styles.previewTiles}>
-                    <div className={styles.previewTile}>
-                      <span>예상 발전량</span>
-                      <strong>+12.8%</strong>
+                <div className={styles.barChart}>
+                  {heroBars.map((height, index) => (
+                    <div key={height} className={styles.barTrack}>
+                      <span
+                        className={[
+                          styles.barFill,
+                          index === heroBars.length - 2 ? styles.barHighlight : '',
+                          index % 3 === 1 ? styles.barSecondary : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                        style={{ height: `${height}%` }}
+                      />
                     </div>
-                    <div className={styles.previewTile}>
-                      <span>리스크 점검</span>
-                      <strong>2건 발견</strong>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -178,35 +204,97 @@ export function HomePage() {
 
         <section className={styles.metricsSection}>
           <div className={[styles.container, styles.metricsGrid].join(' ')}>
-            {stats.map((stat) => (
-              <article key={stat.label} className={styles.metricCard}>
-                <strong>{stat.value}</strong>
-                <span>{stat.label}</span>
+            {metrics.map((metric) => (
+              <article key={metric.label} className={styles.metricCard}>
+                <strong>{metric.value}</strong>
+                <span>{metric.label}</span>
               </article>
             ))}
           </div>
         </section>
 
-        <section id="problems" className={styles.lightSection}>
+        <section id="problems" className={styles.problemSection}>
           <div className={styles.container}>
             <div className={styles.sectionHeader}>
-              <span className={styles.sectionEyebrow}>Pain Points</span>
-              <h2>기존 태양광 운영, 이런 문제 없으신가요?</h2>
-              <p>현장 운영과 데이터 정리를 분리하지 않고 한 화면에서 이해할 수 있도록 구성했습니다.</p>
+              <span className={styles.sectionEyebrowProblem}>PROBLEM</span>
+              <h2>기존 태양광 관리, 이런 문제 없으셨나요?</h2>
             </div>
 
-            <div className={styles.issueGrid}>
-              {painPoints.map((item) => (
-                <article key={item.title} className={styles.issueCard}>
-                  <span className={styles.issueIcon}>!</span>
-                  <h3>{item.title}</h3>
-                  <p>{item.description}</p>
+            <div className={styles.problemGrid}>
+              {problems.map((problem) => (
+                <article key={problem.id} className={styles.problemCard}>
+                  <div className={styles.problemCardTop}>
+                    <span className={styles.problemIndex}>{problem.id}</span>
+                    <span className={styles.problemIcon}>✕</span>
+                  </div>
+                  <h3>{problem.title}</h3>
+                  <p>{problem.description}</p>
+                  <div className={styles.problemImpact}>{problem.impact}</div>
                 </article>
               ))}
             </div>
 
-            <div className={styles.noticeBanner}>
-              SolarWise는 주요 운영 데이터를 하나의 홈 화면에서 확인할 수 있도록 랜딩 흐름을 정리합니다.
+            <div className={styles.problemBanner}>✓ SolarWise는 이 모든 문제를 데이터와 AI로 해결합니다.</div>
+          </div>
+        </section>
+
+        <section id="features" className={styles.featureSection}>
+          <div className={styles.container}>
+            <div className={styles.featureLayout}>
+              <div className={styles.featureContent}>
+                <span className={styles.sectionEyebrow}>FEATURES</span>
+                <h2>발전소 관리의 모든 것, 하나로</h2>
+
+                <div className={styles.featureList}>
+                  {featureTabs.map((feature, index) => (
+                    <article
+                      key={feature.title}
+                      className={[styles.featureCard, index === 0 ? styles.featureCardActive : ''].filter(Boolean).join(' ')}
+                    >
+                      <div>
+                        <h3>{feature.title}</h3>
+                        {feature.description ? <p>{feature.description}</p> : null}
+                      </div>
+                      {index === 0 ? null : <span className={styles.featureArrow}>›</span>}
+                    </article>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.featurePreview}>
+                <div className={styles.featurePreviewTop}>
+                  <div className={styles.previewDots}>
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                  <span className={styles.liveBadge}>● Live</span>
+                </div>
+                <p className={styles.featurePreviewLabel}>실시간 발전량 대시보드</p>
+
+                <div className={styles.featureChart}>
+                  <div className={styles.chartGridLines}>
+                    <span />
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                  <svg viewBox="0 0 820 320" className={styles.chartSvg} role="img" aria-label="발전량 추세 차트">
+                    <polyline
+                      points="0,280 60,250 120,180 180,120 240,90 300,64 360,40 420,32 480,44 540,70 600,95 660,118 740,136 820,156"
+                      className={styles.chartLine}
+                    />
+                  </svg>
+                  <div className={styles.chartCallout}>4.8 kWh/kWp</div>
+                  <div className={styles.chartAxis}>
+                    <span>09:00</span>
+                    <span>11:00</span>
+                    <span>13:00</span>
+                    <span>15:00</span>
+                    <span>17:00</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -214,72 +302,23 @@ export function HomePage() {
         <section id="workflow" className={styles.workflowSection}>
           <div className={styles.container}>
             <div className={styles.sectionHeader}>
-              <span className={styles.sectionEyebrow}>How It Works</span>
-              <h2>홈 화면 중심의 분석 흐름</h2>
-              <p>입력부터 예측, 진단, 보고서 생성까지 사용자가 자연스럽게 따라갈 수 있는 구조입니다.</p>
+              <span className={styles.sectionEyebrow}>HOW IT WORKS</span>
+              <h2>4단계로 시작하는 스마트 관리</h2>
             </div>
 
-            <div className={styles.workflowLayout}>
-              <div className={styles.workflowNav}>
-                {workflowSteps.map((step) => (
-                  <article key={step.id} className={styles.workflowStep}>
-                    <span>{step.id}</span>
-                    <div>
-                      <h3>{step.title}</h3>
-                      <p>{step.description}</p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-
-              <div className={styles.workflowBoard}>
-                <div className={styles.boardTop}>
-                  <span className={styles.previewBadge}>HOME INSIGHT PANEL</span>
-                  <p>최근 입력된 부지와 예측 결과를 바탕으로 추천 액션을 빠르게 보여주는 영역입니다.</p>
-                </div>
-
-                <div className={styles.boardCanvas}>
-                  <div className={styles.boardHero}>
-                    <strong>{submittedAddress || '입지 선택 대기 중'}</strong>
-                    <span>운영팀이 즉시 확인해야 하는 인사이트를 이곳에 요약합니다.</span>
-                  </div>
-
-                  <div className={styles.boardGrid}>
-                    <article>
-                      <span>발전량 예측</span>
-                      <strong>38.5 MWh</strong>
-                    </article>
-                    <article>
-                      <span>일사량 지수</span>
-                      <strong>우수</strong>
-                    </article>
-                    <article>
-                      <span>설비 상태</span>
-                      <strong>주의 1건</strong>
-                    </article>
-                    <article>
-                      <span>추천 액션</span>
-                      <strong>점검 일정 생성</strong>
-                    </article>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="benefits" className={styles.benefitSection}>
-          <div className={styles.container}>
-            <div className={styles.sectionHeader}>
-              <span className={styles.sectionEyebrow}>Key Value</span>
-              <h2>실무자가 바로 쓰는 홈 화면</h2>
-              <p>시안의 카드형 구조를 현재 프론트엔드 아키텍처에 맞게 모듈화할 수 있도록 설계했습니다.</p>
-            </div>
-
-            <div className={styles.benefitGrid}>
-              {benefits.map((item) => (
-                <article key={item.step} className={styles.benefitCard}>
-                  <span>{item.step}</span>
+            <div className={styles.stepGrid}>
+              {steps.map((item) => (
+                <article
+                  key={item.step}
+                  className={[
+                    styles.stepCard,
+                    item.tone === 'green' ? styles.stepCardGreen : '',
+                    item.tone === 'orange' ? styles.stepCardOrange : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  <span className={styles.stepBadge}>{item.step}</span>
                   <h3>{item.title}</h3>
                   <p>{item.description}</p>
                 </article>
@@ -290,32 +329,42 @@ export function HomePage() {
 
         <section className={styles.ctaSection}>
           <div className={[styles.container, styles.ctaInner].join(' ')}>
-            <div>
-              <span className={styles.sectionEyebrow}>Start with SolarWise</span>
-              <h2>지금 바로 발전소 AI 진단을 준비하세요</h2>
-              <p>현재 구조에서는 홈에서 관심을 모으고, 상세 진단은 대시보드로 자연스럽게 연결됩니다.</p>
+            <div className={styles.ctaContent}>
+              <h2>지금 바로 발전소를 AI와 연결하세요</h2>
+              <p>회원가입만으로 모든 기능 무료 · 신용카드 불필요</p>
             </div>
 
             <div className={styles.ctaActions}>
-              <Button type="button" className={styles.primaryButton}>
+              <Link to="/login" className={styles.primaryButton}>
                 무료 체험 신청
-              </Button>
-              <Button type="button" variant="secondary" className={styles.secondaryButton}>
+              </Link>
+              <a href="#about" className={styles.ctaSecondaryButton}>
                 서비스 더 알아보기
-              </Button>
+              </a>
             </div>
           </div>
         </section>
       </main>
 
-      <footer className={styles.footer}>
+      <footer id="resources" className={styles.footer}>
         <div className={[styles.container, styles.footerInner].join(' ')}>
           <div className={styles.footerBrand}>
-            <strong>SolarWise</strong>
-            <p>태양광 운영 데이터를 연결하고, 실무자가 빠르게 결정하도록 돕는 프론트엔드 홈 화면입니다.</p>
+            <div className={styles.footerLogo}>
+              <span className={styles.brandSun} />
+              <strong>Solar</strong>
+              <strong className={styles.brandTextAccent}>Wise</strong>
+            </div>
+            <p>AI가 지키는 당신의 발전소</p>
+
+            <form className={styles.footerForm}>
+              <input className={styles.footerInput} placeholder="이메일 주소" aria-label="이메일 주소" />
+              <button type="button" className={styles.footerButton}>
+                구독하기
+              </button>
+            </form>
           </div>
 
-          <div className={styles.footerLinks}>
+          <div id="team" className={styles.footerLinks}>
             {footerColumns.map((column) => (
               <div key={column.title}>
                 <h3>{column.title}</h3>
@@ -327,18 +376,11 @@ export function HomePage() {
               </div>
             ))}
           </div>
+        </div>
 
-          <form className={styles.footerForm}>
-            <label htmlFor="newsletter" className={styles.formLabel}>
-              뉴스레터 구독
-            </label>
-            <div className={styles.footerInputRow}>
-              <input id="newsletter" className={styles.footerInput} placeholder="you@example.com" />
-              <Button type="button" className={styles.footerButton}>
-                구독하기
-              </Button>
-            </div>
-          </form>
+        <div className={[styles.container, styles.footerMeta].join(' ')}>
+          <p>© 2026 SolarWise · 개인정보처리방침 · 이용약관</p>
+          <p>LinkedIn · GitHub · YouTube</p>
         </div>
       </footer>
     </div>
