@@ -3,20 +3,6 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import styles from './LoginPage.module.css'
 
-const highlights = [
-  '실시간 발전량 트래킹',
-  'AI 발전량 예측 (2~3일)',
-  'AI 패널 이상 감지',
-  'XAI 설명 리포트',
-  '예지 정비 알림',
-] as const
-
-const stats = [
-  { value: '1,240+', label: '연동 발전소' },
-  { value: '94.7%', label: 'AI 정확도' },
-  { value: '무료', label: '회원가입' },
-] as const
-
 type FormState = {
   email: string
   password: string
@@ -77,53 +63,45 @@ export function LoginPage() {
   }
 
   return (
-    <main className={styles.page}>
-      <section className={styles.brandPanel}>
-        <div className={styles.brandInner}>
-          <Link to="/" className={styles.brandBadge}>
-            <span className={styles.brandMark}>☀</span>
-            <span>SolarWise</span>
+    <div className={styles.page}>
+      <div className={styles.backgroundBlobLeft} aria-hidden="true" />
+      <div className={styles.backgroundBlobTopRight} aria-hidden="true" />
+      <div className={styles.backgroundBlobBottomRight} aria-hidden="true" />
+
+      <header className={styles.header}>
+        <div className={styles.headerInner}>
+          <Link to="/" className={styles.brand} aria-label="SolarWise 홈">
+            <span className={styles.brandSun} />
+            <span className={styles.brandTextPrimary}>Solar</span>
+            <span className={styles.brandTextAccent}>Wise</span>
           </Link>
 
-          <span className={styles.welcomeBadge}>다시 오셨군요!</span>
+          <nav className={styles.nav} aria-label="로그인 페이지 메뉴">
+            <a href="/#about">서비스 소개</a>
+            <Link to="/dashboard">대시보드</Link>
+            <a href="/#resources">리소스</a>
+            <a href="/#team">팀 소개</a>
+          </nav>
 
-          <div className={styles.heroBlock}>
-            <h1 className={styles.heroTitle}>
-              <span>AI가 지키는</span>
-              <span>당신의 발전소</span>
-            </h1>
-          </div>
-
-          <p className={styles.heroDescription}>
-            실시간 발전량 트래킹부터 AI 결함 감지, 예측까지 SolarWise 하나로.
-          </p>
-
-          <ul className={styles.highlightList} aria-label="서비스 핵심 기능">
-            {highlights.map((item) => (
-              <li key={item} className={styles.highlightItem}>
-                <span className={styles.checkIcon} aria-hidden="true">
-                  ✓
-                </span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-
-          <div className={styles.statsGrid}>
-            {stats.map((item) => (
-              <article key={item.label} className={styles.statCard}>
-                <strong>{item.value}</strong>
-                <span>{item.label}</span>
-              </article>
-            ))}
+          <div className={styles.headerActions}>
+            <span className={styles.activeLink}>로그인</span>
+            <Link to="/signup" className={styles.headerButton}>
+              회원가입
+            </Link>
           </div>
         </div>
-      </section>
+      </header>
 
-      <section className={styles.formPanel}>
-        <div className={styles.formInner}>
+      <main className={styles.main}>
+        <section className={styles.card}>
+          <div className={styles.cardBrand}>
+            <span className={styles.brandSunSmall} />
+            <span className={styles.cardBrandPrimary}>Solar</span>
+            <span className={styles.cardBrandAccent}>Wise</span>
+          </div>
+
           <header className={styles.formHeader}>
-            <h2>로그인</h2>
+            <h1>로그인</h1>
             <p>다시 오셨군요, 반갑습니다 👋</p>
           </header>
 
@@ -153,16 +131,23 @@ export function LoginPage() {
               <label htmlFor="login-password" className={styles.label}>
                 비밀번호
               </label>
-              <input
-                id="login-password"
-                type="password"
-                className={[styles.input, errors.password ? styles.inputError : ''].filter(Boolean).join(' ')}
-                placeholder="비밀번호를 입력하세요"
-                value={form.password}
-                onChange={handleChange('password')}
-                aria-invalid={errors.password ? true : undefined}
-                aria-describedby={errors.password ? 'login-password-error' : undefined}
-              />
+              <div className={styles.passwordWrap}>
+                <input
+                  id="login-password"
+                  type="password"
+                  className={[styles.input, styles.passwordInput, errors.password ? styles.inputError : '']
+                    .filter(Boolean)
+                    .join(' ')}
+                  placeholder="비밀번호를 입력하세요"
+                  value={form.password}
+                  onChange={handleChange('password')}
+                  aria-invalid={errors.password ? true : undefined}
+                  aria-describedby={errors.password ? 'login-password-error' : undefined}
+                />
+                <span className={styles.passwordIcon} aria-hidden="true">
+                  👁
+                </span>
+              </div>
               {errors.password ? (
                 <p id="login-password-error" className={styles.error} role="alert">
                   {errors.password}
@@ -200,8 +185,8 @@ export function LoginPage() {
             <span>아직 계정이 없으신가요?</span>
             <Link to="/signup">무료 회원가입하기 →</Link>
           </p>
-        </div>
-      </section>
-    </main>
+        </section>
+      </main>
+    </div>
   )
 }

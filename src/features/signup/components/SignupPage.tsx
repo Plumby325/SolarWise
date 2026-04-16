@@ -102,169 +102,210 @@ export function SignupPage() {
   }
 
   return (
-    <main className={styles.page}>
-      <section className={styles.brandPanel}>
-        <div className={styles.brandInner}>
-          <Link to="/" className={styles.brandBadge}>
-            <span className={styles.brandMark}>☀</span>
-            <span>SolarWise</span>
+    <div className={styles.page}>
+      <header className={styles.header}>
+        <div className={styles.headerInner}>
+          <Link to="/" className={styles.brand} aria-label="SolarWise 홈">
+            <span className={styles.brandSun} />
+            <span className={styles.brandTextPrimary}>Solar</span>
+            <span className={styles.brandTextAccent}>Wise</span>
           </Link>
 
-          <span className={styles.welcomeBadge}>무료 · 신용카드 불필요</span>
+          <nav className={styles.nav} aria-label="회원가입 페이지 메뉴">
+            <a href="/#about">서비스 소개</a>
+            <Link to="/dashboard">대시보드</Link>
+            <a href="/#resources">리소스</a>
+            <a href="/#team">팀 소개</a>
+          </nav>
 
-          <div className={styles.heroBlock}>
+          <div className={styles.headerActions}>
+            <Link to="/login" className={styles.loginLink}>
+              로그인
+            </Link>
+            <span className={styles.headerButton}>회원가입</span>
+          </div>
+        </div>
+      </header>
+
+      <main className={styles.main}>
+        <section className={styles.brandPanel}>
+          <div className={styles.backgroundCircleLarge} aria-hidden="true" />
+          <div className={styles.backgroundCircleTop} aria-hidden="true" />
+          <div className={styles.backgroundCircleBottom} aria-hidden="true" />
+          <div className={styles.gridLines} aria-hidden="true" />
+
+          <div className={styles.brandInner}>
+            <div className={styles.brandBadge}>
+              <span className={styles.brandSunSmall} />
+              <span className={styles.brandTextOnDarkPrimary}>Solar</span>
+              <span className={styles.brandTextOnDarkAccent}>Wise</span>
+            </div>
+
+            <div className={styles.welcomeBadge}>
+              <span className={styles.welcomeDot} />
+              무료 · 신용카드 불필요
+            </div>
+
             <h1 className={styles.heroTitle}>
               <span>지금 바로 시작하세요.</span>
-              <span>발전소 관리가 달라집니다.</span>
+              <span>발전소 관리가</span>
+              <span className={styles.heroTitleAccent}>달라집니다.</span>
             </h1>
+
+            <p className={styles.heroDescription}>
+              회원가입만으로 5가지 AI 기능을 모두 무료로 이용할 수 있습니다.
+            </p>
+
+            <ul className={styles.highlightList} aria-label="서비스 핵심 기능">
+              {highlights.map((item) => (
+                <li key={item} className={styles.highlightItem}>
+                  <span className={styles.checkIcon} aria-hidden="true">
+                    ✓
+                  </span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div className={styles.statsGrid}>
+              {stats.map((item) => (
+                <article key={item.label} className={styles.statCard}>
+                  <strong>{item.value}</strong>
+                  <span>{item.label}</span>
+                </article>
+              ))}
+            </div>
           </div>
+        </section>
 
-          <p className={styles.heroDescription}>
-            회원가입만으로 5가지 AI 기능을 모두 무료로 이용할 수 있습니다.
-          </p>
+        <section className={styles.formPanel}>
+          <div className={styles.formInner}>
+            <header className={styles.formHeader}>
+              <h1>회원가입</h1>
+              <p>지금 바로 시작하세요. 신용카드 불필요.</p>
+            </header>
 
-          <ul className={styles.highlightList} aria-label="서비스 핵심 기능">
-            {highlights.map((item) => (
-              <li key={item} className={styles.highlightItem}>
-                <span className={styles.checkIcon} aria-hidden="true">
-                  ✓
-                </span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-
-          <div className={styles.statsGrid}>
-            {stats.map((item) => (
-              <article key={item.label} className={styles.statCard}>
-                <strong>{item.value}</strong>
-                <span>{item.label}</span>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className={styles.formPanel}>
-        <div className={styles.formInner}>
-          <header className={styles.formHeader}>
-            <h2>회원가입</h2>
-            <p>지금 바로 시작하세요.</p>
-          </header>
-
-          <form className={styles.form} onSubmit={handleSubmit} noValidate>
-            <div className={styles.field}>
-              <label htmlFor="signup-name" className={styles.label}>
-                이름
-              </label>
-              <input
-                id="signup-name"
-                type="text"
-                className={[styles.input, errors.name ? styles.inputError : ''].filter(Boolean).join(' ')}
-                placeholder="홍길동"
-                value={form.name}
-                onChange={handleChange('name')}
-                aria-invalid={errors.name ? true : undefined}
-                aria-describedby={errors.name ? 'signup-name-error' : undefined}
-              />
-              {errors.name ? (
-                <p id="signup-name-error" className={styles.error} role="alert">
-                  {errors.name}
-                </p>
-              ) : null}
-            </div>
-
-            <div className={styles.field}>
-              <label htmlFor="signup-email" className={styles.label}>
-                이메일
-              </label>
-              <input
-                id="signup-email"
-                type="email"
-                className={[styles.input, errors.email ? styles.inputError : ''].filter(Boolean).join(' ')}
-                placeholder="user@solarwise.com"
-                value={form.email}
-                onChange={handleChange('email')}
-                aria-invalid={errors.email ? true : undefined}
-                aria-describedby={errors.email ? 'signup-email-error' : undefined}
-              />
-              {errors.email ? (
-                <p id="signup-email-error" className={styles.error} role="alert">
-                  {errors.email}
-                </p>
-              ) : null}
-            </div>
-
-            <div className={styles.field}>
-              <label htmlFor="signup-password" className={styles.label}>
-                비밀번호
-              </label>
-              <input
-                id="signup-password"
-                type="password"
-                className={[styles.input, errors.password ? styles.inputError : ''].filter(Boolean).join(' ')}
-                placeholder="Password123!"
-                value={form.password}
-                onChange={handleChange('password')}
-                aria-invalid={errors.password ? true : undefined}
-                aria-describedby={errors.password ? 'signup-password-error' : undefined}
-              />
-              {errors.password ? (
-                <p id="signup-password-error" className={styles.error} role="alert">
-                  {errors.password}
-                </p>
-              ) : null}
-            </div>
-
-            <div className={styles.field}>
-              <span className={styles.label}>발전소 보유 여부 (선택)</span>
-              <div className={styles.ownershipGrid} role="group" aria-label="발전소 보유 여부">
-                {ownershipOptions.map((option) => {
-                  const isSelected = form.ownership === option.id
-
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      className={[styles.ownershipButton, isSelected ? styles.ownershipButtonSelected : '']
-                        .filter(Boolean)
-                        .join(' ')}
-                      onClick={() => handleOwnershipChange(option.id)}
-                      aria-pressed={isSelected}
-                    >
-                      {isSelected ? '●' : '○'} {option.label}
-                    </button>
-                  )
-                })}
+            <form className={styles.form} onSubmit={handleSubmit} noValidate>
+              <div className={styles.field}>
+                <label htmlFor="signup-name" className={styles.label}>
+                  이름
+                </label>
+                <input
+                  id="signup-name"
+                  type="text"
+                  className={[styles.input, errors.name ? styles.inputError : ''].filter(Boolean).join(' ')}
+                  placeholder="홍길동"
+                  value={form.name}
+                  onChange={handleChange('name')}
+                  aria-invalid={errors.name ? true : undefined}
+                  aria-describedby={errors.name ? 'signup-name-error' : undefined}
+                />
+                {errors.name ? (
+                  <p id="signup-name-error" className={styles.error} role="alert">
+                    {errors.name}
+                  </p>
+                ) : null}
               </div>
+
+              <div className={styles.field}>
+                <label htmlFor="signup-email" className={styles.label}>
+                  이메일
+                </label>
+                <input
+                  id="signup-email"
+                  type="email"
+                  className={[styles.input, errors.email ? styles.inputError : ''].filter(Boolean).join(' ')}
+                  placeholder="user@solarwise.com"
+                  value={form.email}
+                  onChange={handleChange('email')}
+                  aria-invalid={errors.email ? true : undefined}
+                  aria-describedby={errors.email ? 'signup-email-error' : undefined}
+                />
+                {errors.email ? (
+                  <p id="signup-email-error" className={styles.error} role="alert">
+                    {errors.email}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="signup-password" className={styles.label}>
+                  비밀번호
+                </label>
+                <div className={styles.passwordWrap}>
+                  <input
+                    id="signup-password"
+                    type="password"
+                    className={[styles.input, styles.passwordInput, errors.password ? styles.inputError : '']
+                      .filter(Boolean)
+                      .join(' ')}
+                    placeholder="Password123!"
+                    value={form.password}
+                    onChange={handleChange('password')}
+                    aria-invalid={errors.password ? true : undefined}
+                    aria-describedby={errors.password ? 'signup-password-error' : undefined}
+                  />
+                  <span className={styles.passwordIcon} aria-hidden="true">
+                    👁
+                  </span>
+                </div>
+                {errors.password ? (
+                  <p id="signup-password-error" className={styles.error} role="alert">
+                    {errors.password}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className={styles.field}>
+                <span className={styles.label}>발전소 보유 여부 (선택)</span>
+                <div className={styles.ownershipGrid} role="group" aria-label="발전소 보유 여부">
+                  {ownershipOptions.map((option) => {
+                    const isSelected = form.ownership === option.id
+
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        className={[styles.ownershipButton, isSelected ? styles.ownershipButtonSelected : '']
+                          .filter(Boolean)
+                          .join(' ')}
+                        onClick={() => handleOwnershipChange(option.id)}
+                        aria-pressed={isSelected}
+                      >
+                        {isSelected ? '●' : '○'} {option.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <button type="submit" className={styles.primaryButton}>
+                무료로 시작하기 →
+              </button>
+            </form>
+
+            <div className={styles.divider} aria-hidden="true">
+              <span />
+              <p>또는 소셜 계정으로 시작하기</p>
+              <span />
             </div>
 
-            <button type="submit" className={styles.primaryButton}>
-              무료로 시작하기 →
-            </button>
-          </form>
+            <div className={styles.socialActions}>
+              <button type="button" className={styles.googleButton} onClick={handleSocialStart}>
+                G&nbsp;&nbsp;Google로 시작하기
+              </button>
+              <button type="button" className={styles.kakaoButton} onClick={handleSocialStart}>
+                카카오로 시작하기
+              </button>
+            </div>
 
-          <div className={styles.divider} aria-hidden="true">
-            <span />
-            <p>또는 소셜 계정으로 시작하기</p>
-            <span />
+            <p className={styles.loginRow}>
+              <span>이미 계정이 있으신가요?</span>
+              <Link to="/login">로그인하기 →</Link>
+            </p>
           </div>
-
-          <div className={styles.socialActions}>
-            <button type="button" className={styles.googleButton} onClick={handleSocialStart}>
-              G&nbsp;&nbsp;Google로 시작하기
-            </button>
-            <button type="button" className={styles.kakaoButton} onClick={handleSocialStart}>
-              카카오로 시작하기
-            </button>
-          </div>
-
-          <p className={styles.loginRow}>
-            <span>이미 계정이 있으신가요?</span>
-            <Link to="/login">로그인하기 →</Link>
-          </p>
-        </div>
-      </section>
-    </main>
+        </section>
+      </main>
+    </div>
   )
 }

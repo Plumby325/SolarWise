@@ -12,7 +12,7 @@ const problems = [
   {
     id: '01',
     title: '패널 먼지 방치',
-    description: '먼지 밀도가 일정 수준을 넘기면 출력 전력이 크게 감소할 수 있습니다.',
+    description: '먼지 밀도가 일정 수준에 달하면 출력 전력의 최대 34%가 감소합니다.',
     impact: '출력 -34%',
   },
   {
@@ -126,7 +126,7 @@ export function HomePage() {
                 로그인
               </Link>
               <Link to="/signup" className={styles.headerButton}>
-                무료로 시작하기 →
+                회원가입
               </Link>
             </div>
           </div>
@@ -335,8 +335,8 @@ export function HomePage() {
             </div>
 
             <div className={styles.ctaActions}>
-              <Link to="/login" className={styles.primaryButton}>
-                무료 체험 신청
+              <Link to="/signup" className={styles.primaryButton}>
+                무료 회원가입하기
               </Link>
               <a href="#about" className={styles.ctaSecondaryButton}>
                 서비스 더 알아보기
