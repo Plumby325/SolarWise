@@ -115,10 +115,10 @@ export function HomePage() {
             </Link>
 
             <nav className={styles.nav} aria-label="홈 페이지 메뉴">
-              <a href="#about">서비스 소개</a>
+              <Link to="/services">서비스 소개</Link>
               <Link to="/dashboard">대시보드</Link>
               <a href="#resources">리소스</a>
-              <a href="#team">팀 소개</a>
+              <Link to="/about">팀 소개</Link>
             </nav>
 
             <div className={styles.headerActions}>
@@ -338,9 +338,9 @@ export function HomePage() {
               <Link to="/signup" className={styles.primaryButton}>
                 무료 회원가입하기
               </Link>
-              <a href="#about" className={styles.ctaSecondaryButton}>
+              <Link to="/services" className={styles.ctaSecondaryButton}>
                 서비스 더 알아보기
-              </a>
+              </Link>
             </div>
           </div>
         </section>

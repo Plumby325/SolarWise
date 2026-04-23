@@ -1,0 +1,676 @@
+.page {
+  min-height: 100vh;
+  color: #0d1b2a;
+  background: #ffffff;
+}
+
+.container {
+  width: min(1280px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  border-bottom: 1px solid #eceae4;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+}
+
+.headerInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 72px;
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+}
+
+.logoBox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 110px;
+  height: 28px;
+  border-radius: 6px;
+  color: #b4b2a9;
+  font-size: 12px;
+  font-weight: 500;
+  background: #f1efe8;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 44px;
+}
+
+.nav a,
+.loginLink {
+  color: #5f5e5a;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.navActive {
+  color: #0d1b2a !important;
+  font-weight: 600 !important;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.loginLink {
+  font-weight: 500;
+}
+
+.headerButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 20px;
+  border-radius: 8px;
+  color: #185fa5;
+  font-size: 14px;
+  font-weight: 500;
+  background: #e6f1fb;
+}
+
+.hero {
+  color: #ffffff;
+  background: #0d1b2a;
+}
+
+.heroInner {
+  padding: 80px 0 112px;
+}
+
+.heroEyebrow {
+  margin: 0;
+  color: #4a7a9b;
+  font-size: 13px;
+}
+
+.heroTitle {
+  margin: 18px 0 0;
+  max-width: 760px;
+  font-size: clamp(2.5rem, 4vw, 2.75rem);
+  line-height: 1.32;
+  letter-spacing: -0.03em;
+}
+
+.heroTitle span {
+  display: block;
+}
+
+.heroDescription {
+  max-width: 640px;
+  margin: 18px 0 0;
+  color: #7aafd4;
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.heroMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-top: 40px;
+}
+
+.metaPill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 20px;
+  border-radius: 10px;
+  color: #85b7eb;
+  font-size: 13px;
+  font-weight: 500;
+  background: #1a2e40;
+}
+
+.valueSection,
+.backgroundSection {
+  padding: 52px 0 44px;
+  background: #ffffff;
+}
+
+.teamSection,
+.stackSection {
+  padding: 52px 0 72px;
+  background: #f8f9fa;
+}
+
+.sectionHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.eyebrow {
+  color: #185fa5;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.sectionHeader h2 {
+  margin: 10px 0 0;
+  font-size: clamp(2rem, 3vw, 2.25rem);
+  line-height: 1.28;
+  letter-spacing: -0.03em;
+}
+
+.sectionHeader p {
+  margin: 18px 0 0;
+  color: #5f5e5a;
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.valueGrid,
+.backgroundGrid,
+.stackGrid {
+  display: grid;
+  gap: 40px;
+}
+
+.valueGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 52px;
+  gap: 40px;
+}
+
+.valueCard {
+  min-height: 200px;
+  padding: 28px 40px;
+  border: 1px solid #eceae4;
+  border-radius: 16px;
+  background: #f8f9fa;
+}
+
+.valueIcon {
+  font-size: 32px;
+}
+
+.valueCard h3,
+.memberCard h3,
+.backgroundCard h3,
+.stackCard h3,
+.footerLinks h3 {
+  margin: 24px 0 0;
+  font-size: 18px;
+}
+
+.valueCard p,
+.memberCard p,
+.backgroundCard li,
+.footerBrand p,
+.footerMeta p,
+.footerLinks li {
+  margin: 10px 0 0;
+  color: #5f5e5a;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.partnerBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 44px;
+  min-height: 56px;
+  width: min(560px, 100%);
+  margin: 40px auto 0;
+  padding: 0 24px;
+  border-radius: 12px;
+  background: #f8f9fa;
+}
+
+.partnerBanner span {
+  color: #888780;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.partnerBanner strong {
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.teamGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 52px;
+}
+
+.memberCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 160px;
+  padding: 16px 20px 20px;
+  border: 1px solid #eceae4;
+  border-radius: 16px;
+  text-align: center;
+  background: #ffffff;
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #eef6ff 0%, #d9ebff 100%);
+}
+
+.memberCard h3 {
+  margin-top: 12px;
+  font-size: 15px;
+}
+
+.memberCard p {
+  margin-top: 2px;
+  color: #888780;
+  font-size: 12px;
+}
+
+.roleBadge {
+  margin-top: 8px;
+  color: #185fa5;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.roleBadgeGreen {
+  color: #1d9e75;
+}
+
+.roleBadgeOrange {
+  color: #ba7517;
+}
+
+.backgroundGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 52px;
+}
+
+.backgroundCard {
+  min-height: 260px;
+  padding: 24px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+}
+
+.problemCard {
+  border-color: #ffe4e4;
+  background: #fff8f8;
+}
+
+.problemCard h3 {
+  color: #e24b4a;
+}
+
+.solutionCard {
+  border-color: #b5d4f4;
+  background: #e6f1fb;
+}
+
+.solutionCard h3,
+.solutionCard li {
+  color: #185fa5;
+}
+
+.backgroundCard ul {
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.backgroundCard li {
+  margin-top: 6px;
+  line-height: 1.7;
+}
+
+.backgroundCard li::before {
+  content: '• ';
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 36px;
+  margin-top: 44px;
+}
+
+.statCard {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  padding: 0 24px;
+  border-radius: 10px;
+  color: #0d1b2a;
+  font-size: 14px;
+  font-weight: 500;
+  background: #f8f9fa;
+}
+
+.stackGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 52px;
+}
+
+.stackCard {
+  min-height: 240px;
+  padding: 24px 30px;
+  border: 1px solid #b5d4f4;
+  border-radius: 16px;
+  background: #e6f1fb;
+}
+
+.stackCard h3 {
+  margin-top: 0;
+  color: #185fa5;
+}
+
+.stackCardGreen {
+  border-color: #c0dd97;
+  background: #eaf3de;
+}
+
+.stackCardGreen h3 {
+  color: #1d9e75;
+}
+
+.stackCardOrange {
+  border-color: #fac775;
+  background: #fff3e8;
+}
+
+.stackCardOrange h3 {
+  color: #ba7517;
+}
+
+.stackItems {
+  display: grid;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.stackItem {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 8px;
+  color: #0d1b2a;
+  font-size: 14px;
+  font-weight: 500;
+  background: #ffffff;
+}
+
+.ctaSection {
+  color: #ffffff;
+  background: #042c53;
+}
+
+.ctaInner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  text-align: center;
+}
+
+.ctaInner h2 {
+  margin: 0;
+  font-size: clamp(1.9rem, 3vw, 2rem);
+}
+
+.ctaInner p {
+  margin: 14px 0 0;
+  color: #7aafd4;
+  font-size: 15px;
+}
+
+.ctaActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.primaryButton,
+.secondaryButton,
+.footerForm button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 0 24px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  transition:
+    transform 0.15s ease,
+    filter 0.15s ease;
+}
+
+.primaryButton {
+  color: #1a0a00;
+  background: #ef9f27;
+}
+
+.secondaryButton {
+  color: #85b7eb;
+  background: #0a3a5e;
+}
+
+.primaryButton:hover,
+.secondaryButton:hover,
+.headerButton:hover,
+.footerForm button:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+}
+
+.footer {
+  padding: 0 0 28px;
+  color: #dbe7f1;
+  background: #0d1b2a;
+}
+
+.footerInner {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.1fr) minmax(0, 2fr);
+  gap: 48px;
+  padding: 52px 0 36px;
+}
+
+.footerLogo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.footerLogoDot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffc861 0%, #ef9f27 70%);
+}
+
+.footerLogoPrimary {
+  color: #ffffff;
+}
+
+.footerLogoAccent {
+  color: #85b7eb;
+}
+
+.footerBrand p {
+  color: #3a5f7a;
+}
+
+.footerForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.footerForm input {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid #1e3448;
+  border-radius: 8px;
+  color: #dbe7f1;
+  font: inherit;
+  background: #1a2e40;
+  outline: none;
+}
+
+.footerForm input::placeholder {
+  color: #2a4a6a;
+}
+
+.footerForm input:focus {
+  border-color: #378add;
+}
+
+.footerForm button {
+  min-height: 38px;
+  padding: 0 18px;
+  color: #ffffff;
+  background: #185fa5;
+}
+
+.footerLinks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.footerLinks h3 {
+  margin-top: 0;
+  color: #85b7eb;
+  font-size: 12px;
+}
+
+.footerLinks ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.footerLinks li {
+  color: #3a5f7a;
+  font-size: 12px;
+}
+
+.footerMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #1a2e40;
+}
+
+.footerMeta p {
+  color: #2a4a6a;
+  font-size: 11px;
+}
+
+@media (max-width: 1180px) {
+  .valueGrid,
+  .stackGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .teamGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .footerInner {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .nav {
+    display: none;
+  }
+
+  .backgroundGrid,
+  .statGrid,
+  .footerLinks {
+    grid-template-columns: 1fr;
+  }
+
+  .teamGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .partnerBanner {
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px 24px;
+  }
+
+  .footerMeta {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 767px) {
+  .container {
+    width: min(100% - 24px, 1280px);
+  }
+
+  .headerInner {
+    min-height: 64px;
+  }
+
+  .loginLink {
+    display: none;
+  }
+
+  .heroInner {
+    padding: 56px 0 72px;
+  }
+
+  .heroMeta,
+  .ctaActions,
+  .footerForm {
+    flex-direction: column;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .teamGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .memberCard,
+  .valueCard,
+  .backgroundCard,
+  .stackCard {
+    min-height: auto;
+  }
+}

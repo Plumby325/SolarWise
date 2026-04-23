@@ -1,7 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { AboutPage } from '@/features/about'
 import { DashboardPage } from '@/features/dashboard'
 import { HomePage } from '@/features/home'
 import { LoginPage } from '@/features/login'
+import { ServiceIntroductionPage } from '@/features/service-introduction'
 import { SignupPage } from '@/features/signup'
 import { SettingsPage } from '@/features/settings'
 import { AppLayout } from '@/shared/layout/AppLayout'
@@ -10,6 +12,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/services" element={<ServiceIntroductionPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route element={<AppLayout />}>
