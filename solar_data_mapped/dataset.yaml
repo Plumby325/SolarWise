@@ -1,0 +1,11 @@
+names:
+  0: normal
+  1: dust
+  2: snow
+  3: bird_dropping
+  4: physical_damage
+nc: 5
+path: "c:\\Users\\hp112\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\minji\\pannel\\solar_data_mapped"
+test: test/images
+train: train/images
+val: val/images
