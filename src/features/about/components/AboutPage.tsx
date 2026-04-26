@@ -5,17 +5,20 @@ const valueCards = [
   {
     icon: '🔮',
     title: 'AI 예지 정비',
-    description: '고장 발생 전 징후를 사전에 포착합니다.',
+    description: ['고장 발생 전 징후를 사전에', '포착하여 피해를 막습니다.'],
+    tone: 'blue',
   },
   {
     icon: '🧠',
     title: '투명한 XAI',
-    description: 'AI가 왜 그런 판단을 내렸는지 설명합니다.',
+    description: ['AI가 왜 그런 판단을 내렸는지', '사용자 언어로 설명합니다.'],
+    tone: 'green',
   },
   {
     icon: '👤',
     title: '비전문가 친화',
-    description: '소규모 운영자도 쉽게 사용할 수 있습니다.',
+    description: ['소규모 발전소 운영자도', '쉽게 사용할 수 있습니다.'],
+    tone: 'orange',
   },
 ] as const
 
@@ -37,18 +40,22 @@ const problemItems = [
 ] as const
 
 const solutionItems = [
-  'Transformer AI - 향후 2~3일 발전량 정밀 예측',
-  'Vision AI - 패널 크랙·오염 자동 감지',
-  'XAI - AI 판단 근거를 비전문가 언어로 설명',
-  '예지 정비 - 고장 전 사전 포착 및 알림',
+  'Transformer AI — 향후 2~3일 발전량 정밀 예측',
+  'Vision AI — 크랙·먼지·눈 오염 자동 감지',
+  'XAI — AI 판단 근거를 비전문가 언어로 설명',
+  '예지 정비 — 고장 전 사전 포착 및 알림',
 ] as const
 
-const backgroundStats = ['태양광 신재생 비중 55%', '신규 설비 중 93.8%', '100kW 미만 소규모 타겟'] as const
+const backgroundStats = [
+  { value: '55%', label: '태양광 신재생에너지 비중 (2024)', tone: 'blue' },
+  { value: '93.8%', label: '신재생 신규 설비 중 태양광', tone: 'green' },
+  { value: '100kW↓', label: '소규모 발전소 타겟', tone: 'orange' },
+] as const
 
 const techStacks = [
-  { title: 'Frontend', tone: 'blue', items: ['React', 'Figma'] },
-  { title: 'Backend', tone: 'green', items: ['Spring Boot', 'MySQL'] },
-  { title: 'AI', tone: 'orange', items: ['PyTorch', 'OpenCV', 'XAI'] },
+  { title: 'Frontend', icon: '⚛', tone: 'blue', items: ['React', 'Figma'] },
+  { title: 'Backend', icon: '🍃', tone: 'green', items: ['Spring Boot', 'MySQL'] },
+  { title: 'AI', icon: '🤖', tone: 'orange', items: ['PyTorch', 'OpenCV', 'XAI'] },
 ] as const
 
 const footerColumns = [
@@ -66,6 +73,12 @@ const footerColumns = [
   },
 ] as const
 
+const heroMeta = [
+  { label: '팀명', value: '솔라와이즈' },
+  { label: '협력기업', value: '지케스' },
+  { label: '팀원', value: '7명' },
+] as const
+
 export function AboutPage() {
   return (
     <div className={styles.page}>
@@ -73,7 +86,9 @@ export function AboutPage() {
         <div className={styles.container}>
           <div className={styles.headerInner}>
             <Link to="/" className={styles.logo} aria-label="SolarWise 홈">
-              <span className={styles.logoBox}>Logo</span>
+              <span className={styles.logoDot} />
+              <span className={styles.logoPrimary}>Solar</span>
+              <span className={styles.logoAccent}>Wise</span>
             </Link>
 
             <nav className={styles.nav} aria-label="About 페이지 메뉴">
@@ -100,17 +115,29 @@ export function AboutPage() {
       <main>
         <section className={styles.hero}>
           <div className={[styles.container, styles.heroInner].join(' ')}>
-            <p className={styles.heroEyebrow}>AI컴퓨터공학부 심화캡스톤디자인 · 협력기업: 지케스</p>
+            <div className={styles.heroBadge}>
+              <span className={styles.heroBadgeDot} aria-hidden="true" />
+              AI컴퓨터공학부 심화캡스톤디자인 · 협력기업: 지케스
+            </div>
+
             <h1 className={styles.heroTitle}>
               <span>AI로 소규모 발전소를 지키는 팀,</span>
-              <span>솔라와이즈</span>
+              <span className={styles.heroTitleAccent}>솔라와이즈</span>
             </h1>
-            <p className={styles.heroDescription}>소규모 태양광 발전소 운영자를 위한 AI 기반 통합 관리 플랫폼을 만듭니다.</p>
+
+            <p className={styles.heroDescription}>
+              소규모 태양광 발전소 운영자를 위한
+              <br />
+              AI 기반 통합 관리 플랫폼을 만듭니다.
+            </p>
 
             <div className={styles.heroMeta}>
-              <div className={styles.metaPill}>팀명: 솔라와이즈</div>
-              <div className={styles.metaPill}>협력기업: 지케스</div>
-              <div className={styles.metaPill}>팀원: 7명</div>
+              {heroMeta.map((item) => (
+                <article key={item.label} className={styles.heroMetaCard}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </article>
+              ))}
             </div>
           </div>
         </section>
@@ -120,26 +147,42 @@ export function AboutPage() {
             <div className={styles.sectionHeader}>
               <span className={styles.eyebrow}>ABOUT</span>
               <h2>우리가 만드는 것</h2>
+              <div className={styles.sectionBar} aria-hidden="true" />
               <p>
-                소규모 태양광 발전소 운영자가 AI를 통해
+                소규모 태양광 발전소 운영자가 AI를 통해 발전소를 실시간으로
                 <br />
-                발전소를 실시간으로 모니터링하고 예지 정비할 수 있는 플랫폼
+                모니터링하고 예지 정비할 수 있는 플랫폼
               </p>
             </div>
 
             <div className={styles.valueGrid}>
               {valueCards.map((card) => (
-                <article key={card.title} className={styles.valueCard}>
-                  <span className={styles.valueIcon}>{card.icon}</span>
+                <article
+                  key={card.title}
+                  className={[
+                    styles.valueCard,
+                    card.tone === 'green' ? styles.valueCardGreen : '',
+                    card.tone === 'orange' ? styles.valueCardOrange : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  <span className={styles.valueIconWrap} aria-hidden="true">
+                    <span className={styles.valueIcon}>{card.icon}</span>
+                  </span>
                   <h3>{card.title}</h3>
-                  <p>{card.description}</p>
+                  <p>
+                    {card.description[0]}
+                    <br />
+                    {card.description[1]}
+                  </p>
                 </article>
               ))}
             </div>
 
             <div className={styles.partnerBanner}>
               <span>협력기업</span>
-              <strong>지케스 · 어플리케이션SW · 상무이사 김성회</strong>
+              <strong>지케스 · 어플리케이션SW</strong>
             </div>
           </div>
         </section>
@@ -149,12 +192,31 @@ export function AboutPage() {
             <div className={styles.sectionHeader}>
               <span className={styles.eyebrow}>TEAM</span>
               <h2>팀원 소개</h2>
+              <div className={styles.sectionBar} aria-hidden="true" />
             </div>
 
             <div className={styles.teamGrid}>
               {teamMembers.map((member) => (
-                <article key={member.name} className={styles.memberCard}>
-                  <div className={styles.avatar} aria-hidden="true" />
+                <article
+                  key={member.name}
+                  className={[
+                    styles.memberCard,
+                    member.tone === 'green' ? styles.memberCardGreen : '',
+                    member.tone === 'orange' ? styles.memberCardOrange : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  <div
+                    className={[
+                      styles.avatar,
+                      member.tone === 'green' ? styles.avatarGreen : '',
+                      member.tone === 'orange' ? styles.avatarOrange : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    aria-hidden="true"
+                  />
                   <h3>{member.name}</h3>
                   <p>{member.major}</p>
                   <span
@@ -179,11 +241,15 @@ export function AboutPage() {
             <div className={styles.sectionHeader}>
               <span className={styles.eyebrow}>BACKGROUND</span>
               <h2>왜 만들었나요?</h2>
+              <div className={styles.sectionBar} aria-hidden="true" />
             </div>
 
             <div className={styles.backgroundGrid}>
               <article className={[styles.backgroundCard, styles.problemCard].join(' ')}>
-                <h3>기존 시스템의 문제</h3>
+                <div className={styles.backgroundHeader}>
+                  <span aria-hidden="true">❌</span>
+                  <h3>기존 시스템의 문제</h3>
+                </div>
                 <ul>
                   {problemItems.map((item) => (
                     <li key={item}>{item}</li>
@@ -192,7 +258,10 @@ export function AboutPage() {
               </article>
 
               <article className={[styles.backgroundCard, styles.solutionCard].join(' ')}>
-                <h3>솔라와이즈의 해결책</h3>
+                <div className={styles.backgroundHeader}>
+                  <span aria-hidden="true">✅</span>
+                  <h3>솔라와이즈의 해결책</h3>
+                </div>
                 <ul>
                   {solutionItems.map((item) => (
                     <li key={item}>{item}</li>
@@ -203,9 +272,19 @@ export function AboutPage() {
 
             <div className={styles.statGrid}>
               {backgroundStats.map((stat) => (
-                <div key={stat} className={styles.statCard}>
-                  {stat}
-                </div>
+                <article
+                  key={stat.label}
+                  className={[
+                    styles.statCard,
+                    stat.tone === 'green' ? styles.statCardGreen : '',
+                    stat.tone === 'orange' ? styles.statCardOrange : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  <strong>{stat.value}</strong>
+                  <span>{stat.label}</span>
+                </article>
               ))}
             </div>
           </div>
@@ -216,6 +295,7 @@ export function AboutPage() {
             <div className={styles.sectionHeader}>
               <span className={styles.eyebrow}>TECH STACK</span>
               <h2>기술 스택</h2>
+              <div className={styles.sectionBar} aria-hidden="true" />
             </div>
 
             <div className={styles.stackGrid}>
@@ -230,6 +310,9 @@ export function AboutPage() {
                     .filter(Boolean)
                     .join(' ')}
                 >
+                  <span className={styles.stackIconWrap} aria-hidden="true">
+                    <span className={styles.stackIcon}>{stack.icon}</span>
+                  </span>
                   <h3>{stack.title}</h3>
                   <div className={styles.stackItems}>
                     {stack.items.map((item) => (
