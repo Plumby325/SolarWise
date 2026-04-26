@@ -79,10 +79,10 @@ export function LoginPage() {
           </Link>
 
           <nav className={styles.nav} aria-label="로그인 페이지 메뉴">
-            <a href="/#about">서비스 소개</a>
+            <Link to="/services">서비스 소개</Link>
             <Link to="/dashboard">대시보드</Link>
-            <a href="/#resources">리소스</a>
-            <a href="/#team">팀 소개</a>
+            <Link to="/#resources">리소스</Link>
+            <Link to="/about">팀 소개</Link>
           </nav>
 
           <div className={styles.headerActions}>
