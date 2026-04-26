@@ -1,6 +1,7 @@
 import type { ChangeEvent, FormEvent } from 'react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { signup } from '@/api'
 import { useHideOnScroll } from '@/shared/hooks/useHideOnScroll'
 import styles from './SignupPage.module.css'
 
@@ -47,6 +48,8 @@ export function SignupPage() {
   const isHeaderHidden = useHideOnScroll()
   const [form, setForm] = useState<FormState>(initialForm)
   const [errors, setErrors] = useState<FormErrors>({})
+  const [submitError, setSubmitError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleChange =
     (field: 'name' | 'email' | 'password') =>
@@ -62,6 +65,7 @@ export function SignupPage() {
         ...current,
         [field]: undefined,
       }))
+      setSubmitError('')
     }
 
   const handleOwnershipChange = (ownership: OwnershipOption) => {
@@ -71,7 +75,7 @@ export function SignupPage() {
     }))
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     const nextErrors: FormErrors = {}
@@ -93,9 +97,25 @@ export function SignupPage() {
     }
 
     setErrors(nextErrors)
+    setSubmitError('')
 
-    if (Object.keys(nextErrors).length === 0) {
-      navigate('/dashboard')
+    if (Object.keys(nextErrors).length > 0) {
+      return
+    }
+
+    try {
+      setIsSubmitting(true)
+      await signup({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        role: 'OWNER',
+      })
+      navigate('/login')
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : '회원가입 중 오류가 발생했습니다.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -281,8 +301,14 @@ export function SignupPage() {
                 </div>
               </div>
 
-              <button type="submit" className={styles.primaryButton}>
-                무료로 시작하기 →
+              {submitError ? (
+                <p className={styles.error} role="alert">
+                  {submitError}
+                </p>
+              ) : null}
+
+              <button type="submit" className={styles.primaryButton} disabled={isSubmitting}>
+                {isSubmitting ? '가입 중...' : '무료로 시작하기 →'}
               </button>
             </form>
 

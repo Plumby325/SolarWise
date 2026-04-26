@@ -1,6 +1,7 @@
 import type { ChangeEvent, FormEvent } from 'react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { login, saveAuthSession } from '@/api'
 import { useHideOnScroll } from '@/shared/hooks/useHideOnScroll'
 import styles from './LoginPage.module.css'
 
@@ -21,6 +22,8 @@ export function LoginPage() {
   const isHeaderHidden = useHideOnScroll()
   const [form, setForm] = useState<FormState>(initialForm)
   const [errors, setErrors] = useState<FormErrors>({})
+  const [submitError, setSubmitError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleChange =
     (field: keyof FormState) =>
@@ -36,9 +39,10 @@ export function LoginPage() {
         ...current,
         [field]: undefined,
       }))
+      setSubmitError('')
     }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     const nextErrors: FormErrors = {}
@@ -54,9 +58,24 @@ export function LoginPage() {
     }
 
     setErrors(nextErrors)
+    setSubmitError('')
 
-    if (Object.keys(nextErrors).length === 0) {
-      navigate('/')
+    if (Object.keys(nextErrors).length > 0) {
+      return
+    }
+
+    try {
+      setIsSubmitting(true)
+      const response = await login({
+        email: form.email.trim(),
+        password: form.password,
+      })
+      saveAuthSession(response.data)
+      navigate('/dashboard')
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : '로그인 중 오류가 발생했습니다.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -163,8 +182,14 @@ export function LoginPage() {
               </a>
             </div>
 
-            <button type="submit" className={styles.primaryButton}>
-              로그인
+            {submitError ? (
+              <p className={styles.error} role="alert">
+                {submitError}
+              </p>
+            ) : null}
+
+            <button type="submit" className={styles.primaryButton} disabled={isSubmitting}>
+              {isSubmitting ? '로그인 중...' : '로그인'}
             </button>
           </form>
 
