@@ -55,3 +55,17 @@ a:hover {
 button {
   font-family: inherit;
 }
+
+.gnb-scroll-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease;
+  will-change: transform;
+}
+
+.gnb-scroll-header--hidden {
+  transform: translateY(-100%);
+}

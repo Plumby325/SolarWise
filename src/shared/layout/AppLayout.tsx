@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { useHideOnScroll } from '@/shared/hooks/useHideOnScroll'
 import styles from './AppLayout.module.css'
 
 const navItems = [
@@ -8,9 +9,11 @@ const navItems = [
 ] as const
 
 export function AppLayout() {
+  const isHeaderHidden = useHideOnScroll()
+
   return (
     <div className={styles.shell}>
-      <header className={styles.header}>
+      <header className={[styles.header, 'gnb-scroll-header', isHeaderHidden ? 'gnb-scroll-header--hidden' : ''].filter(Boolean).join(' ')}>
         <div className={styles.headerInner}>
           <span className={styles.brand}>SolarWise</span>
           <nav className={styles.headerNav} aria-label="주요 메뉴">

@@ -1,6 +1,7 @@
 import type { ChangeEvent, FormEvent } from 'react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useHideOnScroll } from '@/shared/hooks/useHideOnScroll'
 import styles from './SignupPage.module.css'
 
 const highlights = [
@@ -43,6 +44,7 @@ const initialForm: FormState = {
 
 export function SignupPage() {
   const navigate = useNavigate()
+  const isHeaderHidden = useHideOnScroll()
   const [form, setForm] = useState<FormState>(initialForm)
   const [errors, setErrors] = useState<FormErrors>({})
 
@@ -103,7 +105,7 @@ export function SignupPage() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
+      <header className={[styles.header, 'gnb-scroll-header', isHeaderHidden ? 'gnb-scroll-header--hidden' : ''].filter(Boolean).join(' ')}>
         <div className={styles.headerInner}>
           <Link to="/" className={styles.brand} aria-label="SolarWise 홈">
             <span className={styles.brandSun} />

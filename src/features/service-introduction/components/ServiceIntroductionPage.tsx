@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useHideOnScroll } from '@/shared/hooks/useHideOnScroll'
 import styles from './ServiceIntroductionPage.module.css'
 
 const heroHighlights = [
@@ -236,9 +237,11 @@ function FeatureVisual({ visual }: { visual: Visual }) {
 }
 
 export function ServiceIntroductionPage() {
+  const isHeaderHidden = useHideOnScroll()
+
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
+      <header className={[styles.header, 'gnb-scroll-header', isHeaderHidden ? 'gnb-scroll-header--hidden' : ''].filter(Boolean).join(' ')}>
         <div className={styles.container}>
           <div className={styles.headerInner}>
             <Link to="/" className={styles.logo} aria-label="SolarWise 홈">

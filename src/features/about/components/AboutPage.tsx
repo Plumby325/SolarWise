@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useHideOnScroll } from '@/shared/hooks/useHideOnScroll'
 import styles from './AboutPage.module.css'
 
 const valueCards = [
@@ -80,9 +81,11 @@ const heroMeta = [
 ] as const
 
 export function AboutPage() {
+  const isHeaderHidden = useHideOnScroll()
+
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
+      <header className={[styles.header, 'gnb-scroll-header', isHeaderHidden ? 'gnb-scroll-header--hidden' : ''].filter(Boolean).join(' ')}>
         <div className={styles.container}>
           <div className={styles.headerInner}>
             <Link to="/" className={styles.logo} aria-label="SolarWise 홈">

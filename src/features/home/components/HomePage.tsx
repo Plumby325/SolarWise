@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useHideOnScroll } from '@/shared/hooks/useHideOnScroll'
 import styles from './HomePage.module.css'
 
 const metrics = [
@@ -102,10 +103,11 @@ const footerColumns = [
 
 export function HomePage() {
   const heroBars = [45, 58, 72, 62, 78, 55, 46, 60] as const
+  const isHeaderHidden = useHideOnScroll()
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
+      <header className={[styles.header, 'gnb-scroll-header', isHeaderHidden ? 'gnb-scroll-header--hidden' : ''].filter(Boolean).join(' ')}>
         <div className={styles.container}>
           <div className={styles.headerInner}>
             <Link to="/" className={styles.brand} aria-label="SolarWise 홈">
