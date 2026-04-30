@@ -299,37 +299,9 @@
 }
 
 .barChart {
-  display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  align-items: end;
-  gap: 22px;
   height: 360px;
   margin-top: 36px;
   padding: 0 16px 12px;
-}
-
-.barTrack {
-  position: relative;
-  height: 200px;
-  border-radius: 4px;
-  background: #1a2e40;
-}
-
-.barFill {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  border-radius: 4px;
-  background: #185fa5;
-}
-
-.barSecondary {
-  background: #378add;
-}
-
-.barHighlight {
-  background: #ef9f27;
 }
 
 .metricsSection {
@@ -526,9 +498,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 20px;
+  width: 100%;
   padding: 22px 20px;
+  border: 0;
   border-radius: 12px;
+  color: inherit;
   background: rgba(248, 249, 250, 0.5);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .featureCard + .featureCard {
@@ -603,6 +581,10 @@
   position: relative;
   height: 500px;
   margin-top: 18px;
+}
+
+.featureEChart {
+  height: 100%;
 }
 
 .chartGridLines {

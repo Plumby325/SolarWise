@@ -1,5 +1,9 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useHideOnScroll } from '@/shared/hooks/useHideOnScroll'
+import type { EChartsCoreOption } from 'echarts/core'
+import { SiteFooter } from '@/shared/layout/SiteFooter'
+import { SiteHeader } from '@/shared/layout/SiteHeader'
+import { EChart } from '@/shared/ui/EChart'
 import styles from './HomePage.module.css'
 
 const metrics = [
@@ -43,19 +47,19 @@ const featureTabs = [
   },
   {
     title: 'AI 발전량 예측 (2~3일)',
-    description: '',
+    description: '기상 예보와 과거 발전 패턴을 바탕으로 향후 발전량 흐름을 예측합니다.',
   },
   {
     title: '패널 이상 감지',
-    description: '',
+    description: 'YOLO 기반 비전 분석으로 오염, 크랙, 음영 같은 패널 이상을 탐지합니다.',
   },
   {
     title: 'XAI 설명 리포트',
-    description: '',
+    description: 'SHAP 기여도로 예측과 이상 판단에 영향을 준 주요 피처를 설명합니다.',
   },
   {
     title: '예지 정비 알림',
-    description: '',
+    description: '반복 이상과 출력 저하 징후를 분석해 정비 우선순위를 알려줍니다.',
   },
 ] as const
 
@@ -86,54 +90,163 @@ const steps = [
   },
 ] as const
 
-const footerColumns = [
+const heroBars = [45, 58, 72, 62, 78, 55, 46] as const
+const heroBarLabels = ['월', '화', '수', '목', '금', '토', '일'] as const
+const todayHeroBarIndex = (new Date().getDay() + 6) % 7
+
+const heroChartOption: EChartsCoreOption = {
+  animation: false,
+  grid: { top: 24, right: 18, bottom: 20, left: 18 },
+  tooltip: {
+    trigger: 'axis',
+    axisPointer: { type: 'shadow' },
+    valueFormatter: (value: unknown) => (typeof value === 'number' ? `${value}%` : '-'),
+  },
+  xAxis: {
+    type: 'category',
+    data: heroBarLabels,
+    show: false,
+  },
+  yAxis: {
+    type: 'value',
+    min: 0,
+    max: 100,
+    show: false,
+  },
+  series: [
+    {
+      name: '발전량',
+      type: 'bar',
+      stack: 'hero',
+      barWidth: 42,
+      data: heroBars.map((value, index) => ({
+        value,
+        itemStyle: {
+          color: index === todayHeroBarIndex ? '#ef9f27' : index % 3 === 1 ? '#378add' : '#185fa5',
+          borderRadius: [4, 4, 4, 4],
+        },
+      })),
+    },
+    {
+      name: '여유 용량',
+      type: 'bar',
+      stack: 'hero',
+      barWidth: 42,
+      silent: true,
+      tooltip: { show: false },
+      data: heroBars.map((value) => ({
+        value: 100 - value,
+        itemStyle: { color: '#1a2e40', borderRadius: [4, 4, 0, 0] },
+      })),
+    },
+  ],
+}
+
+const darkAxisStyle = {
+  axisLine: { show: false },
+  axisTick: { show: false },
+  axisLabel: { color: '#2a4a6a', fontSize: 10 },
+  splitLine: { lineStyle: { color: '#1e3448' } },
+}
+
+const featurePreviews: Array<{
+  label: string
+  badge: string
+  ariaLabel: string
+  option: EChartsCoreOption
+}> = [
   {
-    title: '서비스',
-    links: ['실시간 모니터링', 'AI 예측', '결함 감지', 'XAI 리포트'],
+    label: '실시간 발전량 대시보드',
+    badge: '● Live',
+    ariaLabel: '실시간 발전량 추세 차트',
+    option: {
+      color: ['#4da3f2'],
+      grid: { top: 34, right: 36, bottom: 42, left: 46 },
+      tooltip: { trigger: 'axis', valueFormatter: (value: unknown) => (typeof value === 'number' ? `${value} kWh/kWp` : '-') },
+      xAxis: {
+        type: 'category',
+        boundaryGap: false,
+        data: ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'],
+        ...darkAxisStyle,
+      },
+      yAxis: {
+        type: 'value',
+        min: 0,
+        max: 6,
+        ...darkAxisStyle,
+      },
+      series: [{ name: '발전량', type: 'line', smooth: true, symbol: 'none', lineStyle: { width: 4 }, data: [1.2, 1.8, 3.2, 4.1, 4.8, 5, 4.6, 3.8, 3.1] }],
+    },
   },
   {
-    title: '팀',
-    links: ['팀 소개', '파트너십'],
+    label: 'AI 발전량 예측',
+    badge: '● Forecast',
+    ariaLabel: 'AI 발전량 예측 차트',
+    option: {
+      color: ['#1d9e75', '#4da3f2'],
+      grid: { top: 34, right: 36, bottom: 42, left: 46 },
+      tooltip: { trigger: 'axis', valueFormatter: (value: unknown) => (typeof value === 'number' ? `${value} kWh` : '-') },
+      legend: { top: 0, right: 0, textStyle: { color: '#4a7a9b', fontSize: 10 } },
+      xAxis: { type: 'category', boundaryGap: false, data: ['오늘', 'D+1', 'D+2', 'D+3', 'D+4'], ...darkAxisStyle },
+      yAxis: { type: 'value', min: 500, max: 820, ...darkAxisStyle },
+      series: [
+        { name: '실측', type: 'line', smooth: true, symbol: 'circle', lineStyle: { width: 3 }, data: [710, 735, null, null, null] },
+        { name: '예측', type: 'line', smooth: true, symbol: 'circle', lineStyle: { width: 3 }, areaStyle: { color: 'rgba(77, 163, 242, 0.1)' }, data: [null, 735, 760, 690, 745] },
+      ],
+    },
   },
   {
-    title: '리소스',
-    links: ['블로그', '기술 문서', 'FAQ'],
+    label: '패널 이상 감지',
+    badge: '● Vision',
+    ariaLabel: '패널 이상 감지 유형별 건수 차트',
+    option: {
+      color: ['#e24b4a'],
+      grid: { top: 30, right: 34, bottom: 42, left: 52 },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (value: unknown) => (typeof value === 'number' ? `${value}건` : '-') },
+      xAxis: { type: 'category', data: ['오염', '크랙', '음영', '출력저하', '통신'], ...darkAxisStyle },
+      yAxis: { type: 'value', min: 0, max: 8, ...darkAxisStyle },
+      series: [{ name: '이상 감지', type: 'bar', barWidth: 34, data: [4, 2, 3, 6, 1].map((value, index) => ({ value, itemStyle: { color: index === 3 ? '#ef9f27' : '#e24b4a', borderRadius: [6, 6, 0, 0] } })) }],
+    },
   },
-] as const
+  {
+    label: 'XAI 설명 리포트',
+    badge: '● Explain',
+    ariaLabel: 'XAI 피처 기여도 차트',
+    option: {
+      grid: { top: 24, right: 54, bottom: 24, left: 72 },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (value: unknown) => (typeof value === 'number' ? value.toFixed(2) : '-') },
+      xAxis: { type: 'value', min: 0, max: 0.6, show: false },
+      yAxis: { type: 'category', inverse: true, data: ['일사량', '기온', '운량', '패널 상태'], axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: '#85b7eb', fontSize: 11 } },
+      series: [{ name: '기여도', type: 'bar', barWidth: 16, data: [
+        { value: 0.52, itemStyle: { color: '#4da3f2', borderRadius: 4 } },
+        { value: 0.28, itemStyle: { color: '#1d9e75', borderRadius: 4 } },
+        { value: 0.15, itemStyle: { color: '#e24b4a', borderRadius: 4 } },
+        { value: 0.1, itemStyle: { color: '#ef9f27', borderRadius: 4 } },
+      ] }],
+    },
+  },
+  {
+    label: '예지 정비 알림',
+    badge: '● Alert',
+    ariaLabel: '예지 정비 우선순위 차트',
+    option: {
+      color: ['#ef9f27'],
+      grid: { top: 30, right: 34, bottom: 42, left: 52 },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (value: unknown) => (typeof value === 'number' ? `${value}%` : '-') },
+      xAxis: { type: 'category', data: ['A구역', 'B구역', 'C구역', 'D구역', 'E구역'], ...darkAxisStyle },
+      yAxis: { type: 'value', min: 0, max: 100, ...darkAxisStyle },
+      series: [{ name: '정비 필요도', type: 'bar', barWidth: 34, data: [42, 68, 35, 84, 57].map((value) => ({ value, itemStyle: { color: value > 75 ? '#e24b4a' : '#ef9f27', borderRadius: [6, 6, 0, 0] } })) }],
+    },
+  },
+]
 
 export function HomePage() {
-  const heroBars = [45, 58, 72, 62, 78, 55, 46, 60] as const
-  const isHeaderHidden = useHideOnScroll()
+  const [activeFeatureIndex, setActiveFeatureIndex] = useState(0)
+  const activeFeaturePreview = featurePreviews[activeFeatureIndex] ?? featurePreviews[0]
 
   return (
     <div className={styles.page}>
-      <header className={[styles.header, 'gnb-scroll-header', isHeaderHidden ? 'gnb-scroll-header--hidden' : ''].filter(Boolean).join(' ')}>
-        <div className={styles.container}>
-          <div className={styles.headerInner}>
-            <Link to="/" className={styles.brand} aria-label="SolarWise 홈">
-              <span className={styles.brandSun} />
-              <span className={styles.brandTextPrimary}>Solar</span>
-              <span className={styles.brandTextAccent}>Wise</span>
-            </Link>
-
-            <nav className={styles.nav} aria-label="홈 페이지 메뉴">
-              <Link to="/services">서비스 소개</Link>
-              <Link to="/dashboard">대시보드</Link>
-              <a href="#resources">리소스</a>
-              <Link to="/about">팀 소개</Link>
-            </nav>
-
-            <div className={styles.headerActions}>
-              <Link to="/login" className={styles.loginLink}>
-                로그인
-              </Link>
-              <Link to="/signup" className={styles.headerButton}>
-                회원가입
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      <SiteHeader ariaLabel="홈 페이지 메뉴" />
 
       <main>
         <section id="about" className={styles.hero}>
@@ -183,22 +296,11 @@ export function HomePage() {
                   </article>
                 </div>
 
-                <div className={styles.barChart}>
-                  {heroBars.map((height, index) => (
-                    <div key={height} className={styles.barTrack}>
-                      <span
-                        className={[
-                          styles.barFill,
-                          index === heroBars.length - 2 ? styles.barHighlight : '',
-                          index % 3 === 1 ? styles.barSecondary : '',
-                        ]
-                          .filter(Boolean)
-                          .join(' ')}
-                        style={{ height: `${height}%` }}
-                      />
-                    </div>
-                  ))}
-                </div>
+                <EChart
+                  ariaLabel="오늘 발전량 막대 차트"
+                  className={styles.barChart}
+                  option={heroChartOption}
+                />
               </div>
             </div>
           </div>
@@ -249,16 +351,19 @@ export function HomePage() {
 
                 <div className={styles.featureList}>
                   {featureTabs.map((feature, index) => (
-                    <article
+                    <button
                       key={feature.title}
-                      className={[styles.featureCard, index === 0 ? styles.featureCardActive : ''].filter(Boolean).join(' ')}
+                      className={[styles.featureCard, activeFeatureIndex === index ? styles.featureCardActive : ''].filter(Boolean).join(' ')}
+                      type="button"
+                      aria-pressed={activeFeatureIndex === index}
+                      onClick={() => setActiveFeatureIndex(index)}
                     >
                       <div>
                         <h3>{feature.title}</h3>
                         {feature.description ? <p>{feature.description}</p> : null}
                       </div>
-                      {index === 0 ? null : <span className={styles.featureArrow}>›</span>}
-                    </article>
+                      {activeFeatureIndex === index ? null : <span className={styles.featureArrow}>›</span>}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -270,31 +375,16 @@ export function HomePage() {
                     <span />
                     <span />
                   </div>
-                  <span className={styles.liveBadge}>● Live</span>
+                  <span className={styles.liveBadge}>{activeFeaturePreview.badge}</span>
                 </div>
-                <p className={styles.featurePreviewLabel}>실시간 발전량 대시보드</p>
+                <p className={styles.featurePreviewLabel}>{activeFeaturePreview.label}</p>
 
                 <div className={styles.featureChart}>
-                  <div className={styles.chartGridLines}>
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                  <svg viewBox="0 0 820 320" className={styles.chartSvg} role="img" aria-label="발전량 추세 차트">
-                    <polyline
-                      points="0,280 60,250 120,180 180,120 240,90 300,64 360,40 420,32 480,44 540,70 600,95 660,118 740,136 820,156"
-                      className={styles.chartLine}
-                    />
-                  </svg>
-                  <div className={styles.chartCallout}>4.8 kWh/kWp</div>
-                  <div className={styles.chartAxis}>
-                    <span>09:00</span>
-                    <span>11:00</span>
-                    <span>13:00</span>
-                    <span>15:00</span>
-                    <span>17:00</span>
-                  </div>
+                  <EChart
+                    ariaLabel={activeFeaturePreview.ariaLabel}
+                    className={styles.featureEChart}
+                    option={activeFeaturePreview.option}
+                  />
                 </div>
               </div>
             </div>
@@ -348,43 +438,7 @@ export function HomePage() {
         </section>
       </main>
 
-      <footer id="resources" className={styles.footer}>
-        <div className={[styles.container, styles.footerInner].join(' ')}>
-          <div className={styles.footerBrand}>
-            <div className={styles.footerLogo}>
-              <span className={styles.brandSun} />
-              <strong>Solar</strong>
-              <strong className={styles.brandTextAccent}>Wise</strong>
-            </div>
-            <p>AI가 지키는 당신의 발전소</p>
-
-            <form className={styles.footerForm}>
-              <input className={styles.footerInput} placeholder="이메일 주소" aria-label="이메일 주소" />
-              <button type="button" className={styles.footerButton}>
-                구독하기
-              </button>
-            </form>
-          </div>
-
-          <div id="team" className={styles.footerLinks}>
-            {footerColumns.map((column) => (
-              <div key={column.title}>
-                <h3>{column.title}</h3>
-                <ul>
-                  {column.links.map((link) => (
-                    <li key={link}>{link}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className={[styles.container, styles.footerMeta].join(' ')}>
-          <p>© 2026 SolarWise · 개인정보처리방침 · 이용약관</p>
-          <p>LinkedIn · GitHub · YouTube</p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }
