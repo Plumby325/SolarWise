@@ -1,8 +1,25 @@
 export async function apiClient<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init)
+  const accessToken = localStorage.getItem('accessToken')
+
+  const response = await fetch(input, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      ...init?.headers,
+    },
+  })
 
   if (!response.ok) {
-    throw new Error(`API request failed: ${response.status}`)
+    const errorBody = await response.json().catch(() => null)
+    const message =
+      typeof errorBody?.message === 'string'
+        ? errorBody.message
+        : typeof errorBody?.error?.message === 'string'
+          ? errorBody.error.message
+          : `API request failed: ${response.status}`
+
+    throw new Error(message)
   }
 
   return response.json() as Promise<T>

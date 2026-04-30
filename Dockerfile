@@ -17,6 +17,9 @@ COPY . .
 # Vite의 기본 포트인 5173을 열어줍니다.
 EXPOSE 5173
 
+# Docker 안에서 localhost는 컨테이너 자신이므로, Windows 호스트의 백엔드는 host.docker.internal로 접근합니다.
+ENV VITE_API_PROXY_TARGET=http://host.docker.internal:8080
+
 # 6. 실행 명령 (서버 서빙)
 # --host 옵션은 도커 외부(내 컴퓨터)에서 접속할 수 있게 해줍니다.
 CMD ["npm", "run", "dev", "--", "--host"]

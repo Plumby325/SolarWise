@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AboutPage } from '@/features/about'
+import { AnomalyDetailPage, AnomalyDetectionMainPage } from '@/features/dashboard-detection'
 import { DashboardPage } from '@/features/dashboard'
 import { HomePage } from '@/features/home'
 import { LoginPage } from '@/features/login'
@@ -15,6 +16,8 @@ export default function App() {
       <Route path="/about" element={<AboutPage />} />
       <Route path="/services" element={<ServiceIntroductionPage />} />
       <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/anomaly-detection" element={<AnomalyDetectionMainPage />} />
+      <Route path="/anomaly-detection/detail" element={<AnomalyDetailPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route element={<AppLayout />}>

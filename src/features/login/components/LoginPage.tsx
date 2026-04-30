@@ -1,7 +1,8 @@
 import type { ChangeEvent, FormEvent } from 'react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useHideOnScroll } from '@/shared/hooks/useHideOnScroll'
+import { login, saveAuthSession } from '@/api'
+import { SiteHeader } from '@/shared/layout/SiteHeader'
 import styles from './LoginPage.module.css'
 
 type FormState = {
@@ -18,9 +19,10 @@ const initialForm: FormState = {
 
 export function LoginPage() {
   const navigate = useNavigate()
-  const isHeaderHidden = useHideOnScroll()
   const [form, setForm] = useState<FormState>(initialForm)
   const [errors, setErrors] = useState<FormErrors>({})
+  const [submitError, setSubmitError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleChange =
     (field: keyof FormState) =>
@@ -36,9 +38,10 @@ export function LoginPage() {
         ...current,
         [field]: undefined,
       }))
+      setSubmitError('')
     }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     const nextErrors: FormErrors = {}
@@ -54,9 +57,24 @@ export function LoginPage() {
     }
 
     setErrors(nextErrors)
+    setSubmitError('')
 
-    if (Object.keys(nextErrors).length === 0) {
-      navigate('/')
+    if (Object.keys(nextErrors).length > 0) {
+      return
+    }
+
+    try {
+      setIsSubmitting(true)
+      const response = await login({
+        email: form.email.trim(),
+        password: form.password,
+      })
+      saveAuthSession(response.data)
+      navigate('/dashboard')
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : '로그인 중 오류가 발생했습니다.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -70,29 +88,7 @@ export function LoginPage() {
       <div className={styles.backgroundBlobTopRight} aria-hidden="true" />
       <div className={styles.backgroundBlobBottomRight} aria-hidden="true" />
 
-      <header className={[styles.header, 'gnb-scroll-header', isHeaderHidden ? 'gnb-scroll-header--hidden' : ''].filter(Boolean).join(' ')}>
-        <div className={styles.headerInner}>
-          <Link to="/" className={styles.brand} aria-label="SolarWise 홈">
-            <span className={styles.brandSun} />
-            <span className={styles.brandTextPrimary}>Solar</span>
-            <span className={styles.brandTextAccent}>Wise</span>
-          </Link>
-
-          <nav className={styles.nav} aria-label="로그인 페이지 메뉴">
-            <Link to="/services">서비스 소개</Link>
-            <Link to="/dashboard">대시보드</Link>
-            <Link to="/#resources">리소스</Link>
-            <Link to="/about">팀 소개</Link>
-          </nav>
-
-          <div className={styles.headerActions}>
-            <span className={styles.activeLink}>로그인</span>
-            <Link to="/signup" className={styles.headerButton}>
-              회원가입
-            </Link>
-          </div>
-        </div>
-      </header>
+      <SiteHeader active="login" ariaLabel="로그인 페이지 메뉴" />
 
       <main className={styles.main}>
         <section className={styles.card}>
@@ -163,8 +159,14 @@ export function LoginPage() {
               </a>
             </div>
 
-            <button type="submit" className={styles.primaryButton}>
-              로그인
+            {submitError ? (
+              <p className={styles.error} role="alert">
+                {submitError}
+              </p>
+            ) : null}
+
+            <button type="submit" className={styles.primaryButton} disabled={isSubmitting}>
+              {isSubmitting ? '로그인 중...' : '로그인'}
             </button>
           </form>
 

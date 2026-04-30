@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
-import { useHideOnScroll } from '@/shared/hooks/useHideOnScroll'
+import { SiteFooter } from '@/shared/layout/SiteFooter'
+import { SiteHeader } from '@/shared/layout/SiteHeader'
 import styles from './ServiceIntroductionPage.module.css'
 
 const heroHighlights = [
@@ -65,21 +66,6 @@ const featureSections = [
     reverse: false,
     visual: 'maintenance',
     tone: 'blue',
-  },
-] as const
-
-const footerColumns = [
-  {
-    title: '서비스',
-    links: ['실시간 모니터링', 'AI 예측', '결함 감지', 'XAI 리포트'],
-  },
-  {
-    title: '팀',
-    links: ['팀 소개', '파트너십'],
-  },
-  {
-    title: '리소스',
-    links: ['블로그', '기술 문서', 'FAQ'],
   },
 ] as const
 
@@ -237,39 +223,9 @@ function FeatureVisual({ visual }: { visual: Visual }) {
 }
 
 export function ServiceIntroductionPage() {
-  const isHeaderHidden = useHideOnScroll()
-
   return (
     <div className={styles.page}>
-      <header className={[styles.header, 'gnb-scroll-header', isHeaderHidden ? 'gnb-scroll-header--hidden' : ''].filter(Boolean).join(' ')}>
-        <div className={styles.container}>
-          <div className={styles.headerInner}>
-            <Link to="/" className={styles.logo} aria-label="SolarWise 홈">
-              <span className={styles.logoDot} />
-              <span className={styles.logoPrimary}>Solar</span>
-              <span className={styles.logoAccent}>Wise</span>
-            </Link>
-
-            <nav className={styles.nav} aria-label="서비스 소개 페이지 메뉴">
-              <Link to="/services" className={styles.navActive}>
-                서비스 소개
-              </Link>
-              <Link to="/dashboard">대시보드</Link>
-              <a href="#footer">리소스</a>
-              <Link to="/about">팀 소개</Link>
-            </nav>
-
-            <div className={styles.headerActions}>
-              <Link to="/login" className={styles.loginLink}>
-                로그인
-              </Link>
-              <Link to="/signup" className={styles.headerButton}>
-                회원가입
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      <SiteHeader active="services" ariaLabel="서비스 소개 페이지 메뉴" />
 
       <main>
         <section className={styles.hero}>
@@ -374,43 +330,7 @@ export function ServiceIntroductionPage() {
         </section>
       </main>
 
-      <footer id="footer" className={styles.footer}>
-        <div className={styles.container}>
-          <div className={styles.footerInner}>
-            <div className={styles.footerBrand}>
-              <div className={styles.footerLogo}>
-                <span className={styles.footerLogoDot} />
-                <span className={styles.footerLogoPrimary}>Solar</span>
-                <span className={styles.footerLogoAccent}>Wise</span>
-              </div>
-              <p>AI가 지키는 당신의 발전소</p>
-
-              <form className={styles.footerForm}>
-                <input type="email" placeholder="이메일 주소" aria-label="이메일 주소" />
-                <button type="button">구독하기</button>
-              </form>
-            </div>
-
-            <div className={styles.footerLinks}>
-              {footerColumns.map((column) => (
-                <div key={column.title}>
-                  <h3>{column.title}</h3>
-                  <ul>
-                    {column.links.map((link) => (
-                      <li key={link}>{link}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className={styles.footerMeta}>
-            <p>© 2026 SolarWise · 개인정보처리방침 · 이용약관</p>
-            <p>LinkedIn · GitHub · YouTube</p>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter id="footer" />
     </div>
   )
 }

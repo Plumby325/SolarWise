@@ -1,1 +1,5 @@
 export { apiClient } from './client'
+export { getForecast, getMeasurements } from './dashboard'
+export { login, saveAuthSession, signup } from './auth'
+export type { ForecastPoint, ForecastResponse, MeasurementPoint, MeasurementSeries } from './dashboard'
+export type { LoginRequest, LoginResponse, SignupRequest, UserResponse } from './auth'
