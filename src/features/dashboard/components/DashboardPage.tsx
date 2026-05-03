@@ -1,90 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { EChartsCoreOption } from 'echarts/core'
-import { getForecast, getMeasurements } from '@/api'
-import type { ForecastPoint, MeasurementPoint } from '@/api'
+import { getAnomalies, getDashboardSummary, getForecast, getMeasurements, getPlants } from '@/api'
+import type { AnomalyEvent, DashboardSummary, ForecastPoint, MeasurementPoint, Plant } from '@/api'
 import { DashboardSidebar } from '@/shared/layout/DashboardSidebar'
+import { DashboardSettingsMenu } from '@/shared/layout/DashboardSettingsMenu'
 import { EChart } from '@/shared/ui/EChart'
 import styles from './DashboardPage.module.css'
 
-const PLANT_ID = 1
-
 const generationRanges = [
-  { id: '5m', label: '5m', durationMs: 5 * 60 * 1000 },
   { id: '1h', label: '1h', durationMs: 60 * 60 * 1000 },
+  { id: '12h', label: '12h', durationMs: 12 * 60 * 60 * 1000 },
   { id: '1d', label: '1d', durationMs: 24 * 60 * 60 * 1000 },
 ] as const
 
 type GenerationRangeId = (typeof generationRanges)[number]['id']
-
-const summaryCards = [
-  {
-    label: '현재 발전량',
-    value: '92.4',
-    unit: 'kW',
-    note: '정상 운영 중',
-    trend: '↑ +2.1%',
-    tone: 'blue',
-    icon: '⚡',
-    actionTo: '',
-  },
-  {
-    label: '금일 발전량',
-    value: '538.2',
-    unit: 'kWh',
-    note: '목표 대비',
-    trend: '↑ +8.3%',
-    tone: 'green',
-    icon: '☀',
-    actionTo: '',
-  },
-  {
-    label: '발전 효율',
-    value: '87.1',
-    unit: '%',
-    note: '평균 대비',
-    trend: '↑ +2.1%',
-    tone: 'amber',
-    icon: '📊',
-    actionTo: '',
-  },
-  {
-    label: '이상 감지',
-    value: '1',
-    unit: '건',
-    note: 'HIGH · 즉시 확인',
-    trend: '즉시 확인 →',
-    tone: 'red',
-    icon: '⚠',
-    actionTo: '/anomaly-detection',
-  },
-] as const
-
-const fallbackMeasurements: MeasurementPoint[] = [
-  { measuredAt: '2026-04-30T09:00:00Z', powerKw: 0, temperature: 21, irradiance: 120, humidity: 54 },
-  { measuredAt: '2026-04-30T09:15:00Z', powerKw: 12, temperature: 22, irradiance: 220, humidity: 53 },
-  { measuredAt: '2026-04-30T09:30:00Z', powerKw: 32, temperature: 23, irradiance: 360, humidity: 51 },
-  { measuredAt: '2026-04-30T09:45:00Z', powerKw: 54, temperature: 24, irradiance: 520, humidity: 48 },
-  { measuredAt: '2026-04-30T10:00:00Z', powerKw: 70, temperature: 25, irradiance: 650, humidity: 45 },
-  { measuredAt: '2026-04-30T10:30:00Z', powerKw: 82, temperature: 26, irradiance: 710, humidity: 43 },
-  { measuredAt: '2026-04-30T11:00:00Z', powerKw: 87, temperature: 27, irradiance: 760, humidity: 41 },
-  { measuredAt: '2026-04-30T11:30:00Z', powerKw: 82, temperature: 28, irradiance: 730, humidity: 42 },
-  { measuredAt: '2026-04-30T12:00:00Z', powerKw: 77, temperature: 29, irradiance: 700, humidity: 44 },
-  { measuredAt: '2026-04-30T12:30:00Z', powerKw: 73, temperature: 29, irradiance: 680, humidity: 45 },
-  { measuredAt: '2026-04-30T13:00:00Z', powerKw: 80, temperature: 28, irradiance: 710, humidity: 46 },
-  { measuredAt: '2026-04-30T13:30:00Z', powerKw: 88, temperature: 28, irradiance: 740, humidity: 46 },
-  { measuredAt: '2026-04-30T14:00:00Z', powerKw: 92.4, temperature: 27, irradiance: 760, humidity: 47 },
-]
-
-const fallbackForecasts: ForecastPoint[] = [
-  { target_time: '2026-05-01T00:00:00', predicted_power_kw: 82, confidence: 0.91, model_version: 'XGBoost', model_notes: null },
-  { target_time: '2026-05-01T06:00:00', predicted_power_kw: 88, confidence: 0.9, model_version: 'XGBoost', model_notes: null },
-  { target_time: '2026-05-01T12:00:00', predicted_power_kw: 75, confidence: 0.87, model_version: 'XGBoost', model_notes: null },
-  { target_time: '2026-05-01T18:00:00', predicted_power_kw: 66, confidence: 0.85, model_version: 'XGBoost', model_notes: null },
-  { target_time: '2026-05-02T00:00:00', predicted_power_kw: 73, confidence: 0.84, model_version: 'XGBoost', model_notes: null },
-  { target_time: '2026-05-02T06:00:00', predicted_power_kw: 83, confidence: 0.82, model_version: 'XGBoost', model_notes: null },
-  { target_time: '2026-05-02T12:00:00', predicted_power_kw: 81, confidence: 0.81, model_version: 'XGBoost', model_notes: null },
-]
 
 const featureContributions = [
   { label: '일사량', value: 0.52, tone: 'blue', color: '#185fa5' },
@@ -93,46 +23,29 @@ const featureContributions = [
   { label: '패널 상태', value: 0.1, tone: 'amber', color: '#ba7517' },
 ] as const
 
-const alerts = [
-  {
-    severity: 'HIGH',
-    category: 'POWER',
-    title: '예상 대비 발전량 28% 감소',
-    detail: '일사량 정상 · 인버터 연결 확인 필요',
-    time: '오늘 13:40',
-    tone: 'red',
-  },
-  {
-    severity: 'MEDIUM',
-    category: 'VISION',
-    title: '패널 표면 오염 의심',
-    detail: 'YOLOv11s 감지 · 신뢰도 93% · 보성 3구역',
-    time: '오늘 13:50',
-    tone: 'amber',
-  },
-] as const
-
-function formatChartTime(value: string) {
-  return new Intl.DateTimeFormat('ko-KR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date(value))
+function parseBackendDateTime(value: string) {
+  return new Date(value.endsWith('Z') ? value.slice(0, -1) : value).getTime()
 }
 
-function formatGenerationChartTime(value: string, rangeId: GenerationRangeId) {
-  const date = new Date(value)
+function formatChartTime(value: string | number) {
+  const date = typeof value === 'number' ? new Date(value) : new Date(parseBackendDateTime(value))
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+
+  return `${hours}:${minutes}`
+}
+
+function formatGenerationChartTime(value: string | number, rangeId: GenerationRangeId) {
+  const date = typeof value === 'number' ? new Date(value) : new Date(parseBackendDateTime(value))
 
   if (rangeId === '1d') {
-    return new Intl.DateTimeFormat('ko-KR', {
-      month: 'numeric',
-      day: 'numeric',
-      hour: '2-digit',
-      hour12: false,
-    }).format(date)
+    const month = date.getMonth() + 1
+    const day = date.getDate()
+
+    return `${month}/${day} ${formatChartTime(date.getTime())}`
   }
 
-  return formatChartTime(value)
+  return formatChartTime(date.getTime())
 }
 
 function formatChartDate(value: string) {
@@ -150,135 +63,438 @@ function getGenerationRangeDuration(rangeId: GenerationRangeId) {
   return generationRanges.find((range) => range.id === rangeId)?.durationMs ?? generationRanges[0].durationMs
 }
 
-function getFallbackMeasurementsForRange(rangeId: GenerationRangeId) {
-  const pointCount = rangeId === '5m' ? 6 : rangeId === '1h' ? 12 : 24
+function getGenerationAxisInterval(rangeId: GenerationRangeId) {
+  return rangeId === '1h' ? 15 * 60 * 1000 : 60 * 60 * 1000
+}
+
+function createDummyMeasurements(rangeId: GenerationRangeId): MeasurementPoint[] {
+  const intervalMs = getGenerationAxisInterval(rangeId)
   const durationMs = getGenerationRangeDuration(rangeId)
-  const endTime = Date.now()
-  const startTime = endTime - durationMs
-  const intervalMs = durationMs / Math.max(pointCount - 1, 1)
-  const sourcePoints = fallbackMeasurements.slice(-pointCount)
+  const axisMax = Math.ceil(Date.now() / intervalMs) * intervalMs
+  const axisMin = axisMax - durationMs
+  const pointCount = Math.floor(durationMs / intervalMs) + 1
 
   return Array.from({ length: pointCount }, (_, index) => {
-    const sourcePoint = sourcePoints[index % sourcePoints.length]
+    const ratio = pointCount === 1 ? 1 : index / (pointCount - 1)
+    const curve = Math.sin(ratio * Math.PI)
+    const powerKw = 1800 + curve * 7200 + Math.sin(index * 1.7) * 280
 
     return {
-      ...sourcePoint,
-      measuredAt: new Date(startTime + intervalMs * index).toISOString(),
+      measuredAt: new Date(axisMin + intervalMs * index).toISOString(),
+      powerKw: Math.max(0, powerKw),
+      temperature: 22 + curve * 8,
+      irradiance: 180 + curve * 720,
+      humidity: 62 - curve * 18,
     }
   })
 }
 
+function createDummyForecasts(): ForecastPoint[] {
+  const startTime = Date.now() + 60 * 60 * 1000
+  const intervalMs = 6 * 60 * 60 * 1000
+
+  return Array.from({ length: 8 }, (_, index) => {
+    const curve = Math.sin(((index % 4) + 1) / 5 * Math.PI)
+
+    return {
+      target_time: new Date(startTime + intervalMs * index).toISOString(),
+      predicted_power_kw: Math.max(0, 2600 + curve * 6200 - Math.floor(index / 4) * 350),
+      confidence: 0.9 - index * 0.015,
+      model_version: 'Dummy-XGBoost',
+      model_notes: 'API 데이터 없음 - 프론트 더미 데이터',
+    }
+  })
+}
+
+function formatNotificationTime(value: string) {
+  return new Intl.DateTimeFormat('ko-KR', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(value))
+}
+
+function getAnomalyTone(severity: string) {
+  if (severity === 'HIGH') {
+    return 'red'
+  }
+
+  if (severity === 'MEDIUM') {
+    return 'amber'
+  }
+
+  return 'blue'
+}
+
+function getAnomalyDetailPath(eventId: number) {
+  return `/anomaly-detection/detail?eventId=${eventId}`
+}
+
+function formatMetric(value: number | undefined, digits = 1) {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return '--'
+  }
+
+  return value.toLocaleString('ko-KR', {
+    maximumFractionDigits: digits,
+    minimumFractionDigits: digits,
+  })
+}
+
+function getPowerAxisMax(values: number[]) {
+  const maxValue = Math.max(...values, 0)
+
+  if (maxValue <= 0) {
+    return 100
+  }
+
+  return Math.ceil((maxValue * 1.15) / 100) * 100
+}
+
+function formatLocalDateTimeParam(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, '0')
+
+  return [
+    date.getFullYear(),
+    '-',
+    pad(date.getMonth() + 1),
+    '-',
+    pad(date.getDate()),
+    'T',
+    pad(date.getHours()),
+    ':',
+    pad(date.getMinutes()),
+    ':',
+    pad(date.getSeconds()),
+  ].join('')
+}
+
 export function DashboardPage() {
-  const [selectedGenerationRange, setSelectedGenerationRange] = useState<GenerationRangeId>('5m')
-  const [measurements, setMeasurements] = useState<MeasurementPoint[]>(() => getFallbackMeasurementsForRange('5m'))
-  const [forecasts, setForecasts] = useState<ForecastPoint[]>(fallbackForecasts)
-  const [isUsingFallbackMeasurements, setIsUsingFallbackMeasurements] = useState(true)
-  const [isUsingFallbackForecast, setIsUsingFallbackForecast] = useState(true)
-  const isUsingFallbackChartData = isUsingFallbackMeasurements || isUsingFallbackForecast
+  const [selectedGenerationRange, setSelectedGenerationRange] = useState<GenerationRangeId>('1h')
+  const [plants, setPlants] = useState<Plant[]>([])
+  const [selectedPlantId, setSelectedPlantId] = useState<number | null>(null)
+  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null)
+  const [summaryError, setSummaryError] = useState('')
+  const [measurements, setMeasurements] = useState<MeasurementPoint[]>([])
+  const [forecasts, setForecasts] = useState<ForecastPoint[]>([])
+  const [anomalies, setAnomalies] = useState<AnomalyEvent[]>([])
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false)
+  const [notificationError, setNotificationError] = useState('')
+  const [measurementError, setMeasurementError] = useState('')
+  const [forecastError, setForecastError] = useState('')
+  const [refreshKey, setRefreshKey] = useState(0)
+  const selectedPlant = plants.find((plant) => plant.plantId === selectedPlantId)
+  const activeAnomalies = anomalies.filter((anomaly) => anomaly.status !== 'RESOLVED')
+  const hasNotifications = activeAnomalies.length > 0
+  const isSummaryMissingData = !dashboardSummary
+  const summaryStatusText = summaryError || (isSummaryMissingData ? 'API 데이터 없음' : '실시간 API 반영')
+  const summaryCards = [
+    {
+      label: '현재 발전량',
+      value: formatMetric(dashboardSummary?.currentPowerKw),
+      unit: 'kW',
+      note: '현재 실시간 발전량',
+      trend: summaryStatusText,
+      tone: 'blue',
+      icon: '⚡',
+      actionTo: '',
+    },
+    {
+      label: '금일 발전량',
+      value: formatMetric(dashboardSummary?.todayGenerationKwh),
+      unit: 'kWh',
+      note: '오늘 누적 발전량',
+      trend: summaryStatusText,
+      tone: 'green',
+      icon: '☀',
+      actionTo: '',
+    },
+    {
+      label: '발전 효율',
+      value: formatMetric(dashboardSummary?.efficiencyPercent),
+      unit: '%',
+      note: '최대치 대비 효율',
+      trend: summaryStatusText,
+      tone: 'amber',
+      icon: '📊',
+      actionTo: '',
+    },
+    {
+      label: '이상 감지',
+      value: String(activeAnomalies.length),
+      unit: '건',
+      note: activeAnomalies[0] ? `${activeAnomalies[0].severity} · 즉시 확인` : '이상 이벤트 없음',
+      trend: activeAnomalies.length > 0 ? '즉시 확인 →' : '정상',
+      tone: activeAnomalies.length > 0 ? 'red' : 'blue',
+      icon: '⚠',
+      actionTo: activeAnomalies.length > 0 ? '/anomaly-detection' : '',
+    },
+  ] as const
 
   useEffect(() => {
     let isActive = true
-    const to = new Date()
-    const from = new Date(to.getTime() - getGenerationRangeDuration(selectedGenerationRange))
 
-    getMeasurements(PLANT_ID, from.toISOString(), to.toISOString())
-      .then((measurementResponse) => {
+    getPlants()
+      .then((plantResponse) => {
         if (!isActive) {
           return
         }
 
-        const hasBackendData = measurementResponse.data.series.length > 0
-        const nextMeasurements = hasBackendData
-          ? measurementResponse.data.series
-          : getFallbackMeasurementsForRange(selectedGenerationRange)
+        setPlants(plantResponse.data)
+        setSelectedPlantId(plantResponse.data[0]?.plantId ?? null)
 
-        setMeasurements(nextMeasurements)
-        setIsUsingFallbackMeasurements(!hasBackendData)
+        if (plantResponse.data.length === 0) {
+          setNotificationError('현재 계정에 연결된 발전소가 없습니다.')
+        }
       })
-      .catch(() => {
+      .catch((error) => {
         if (!isActive) {
           return
         }
 
-        setMeasurements(getFallbackMeasurementsForRange(selectedGenerationRange))
-        setIsUsingFallbackMeasurements(true)
+        console.error('발전소 목록 조회 실패:', error)
+        setPlants([])
+        setSelectedPlantId(null)
+        setNotificationError(error instanceof Error ? error.message : '발전소 목록을 불러오지 못했습니다.')
       })
 
     return () => {
       isActive = false
     }
-  }, [selectedGenerationRange])
+  }, [refreshKey])
 
   useEffect(() => {
+    if (!selectedPlantId) {
+      setMeasurements([])
+      setMeasurementError('발전소 데이터 없음')
+      return
+    }
+
     let isActive = true
 
-    getForecast(PLANT_ID)
-      .then((forecastResponse) => {
-        if (!isActive) {
-          return
-        }
+    const fetchMeasurements = () => {
+      const to = new Date()
+      const from = new Date(to.getTime() - getGenerationRangeDuration(selectedGenerationRange))
 
-        const hasBackendData = forecastResponse.data.forecast_series.length > 0
+      getMeasurements(selectedPlantId, formatLocalDateTimeParam(from), formatLocalDateTimeParam(to))
+        .then((measurementResponse) => {
+          if (!isActive) {
+            return
+          }
 
-        setForecasts(hasBackendData ? forecastResponse.data.forecast_series : fallbackForecasts)
-        setIsUsingFallbackForecast(!hasBackendData)
-      })
-      .catch(() => {
-        if (!isActive) {
-          return
-        }
+          const hasBackendData = measurementResponse.data.series.length > 0
+          setMeasurements(hasBackendData ? measurementResponse.data.series : createDummyMeasurements(selectedGenerationRange))
+          setMeasurementError(hasBackendData ? '' : '계측 API 데이터 없음 · 더미 데이터 표시 중')
+        })
+        .catch((error) => {
+          if (!isActive) {
+            return
+          }
 
-        setForecasts(fallbackForecasts)
-        setIsUsingFallbackForecast(true)
-      })
+          console.error('실시간 발전량 조회 실패:', error)
+          setMeasurements(createDummyMeasurements(selectedGenerationRange))
+          setMeasurementError(`${error instanceof Error ? error.message : '계측 API 조회 실패'} · 더미 데이터 표시 중`)
+        })
+    }
+
+    fetchMeasurements()
+    const pollingTimer = window.setInterval(fetchMeasurements, 5000)
 
     return () => {
       isActive = false
+      window.clearInterval(pollingTimer)
     }
-  }, [])
+  }, [refreshKey, selectedGenerationRange, selectedPlantId])
 
-  const generationChartOption = useMemo<EChartsCoreOption>(() => ({
-    color: ['#185fa5'],
-    grid: { top: 16, right: 16, bottom: 28, left: 36 },
-    tooltip: {
-      trigger: 'axis',
-      valueFormatter: (value: unknown) => `${value} kW`,
-    },
-    xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: measurements.map((point) => formatGenerationChartTime(point.measuredAt, selectedGenerationRange)),
-      axisLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: { color: '#c4c2bb', fontSize: 9 },
-      splitLine: { show: true, lineStyle: { color: '#f5f3ef' } },
-    },
-    yAxis: {
-      type: 'value',
-      min: 0,
-      max: 100,
-      axisLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: { color: '#c4c2bb', fontSize: 9 },
-      splitLine: { lineStyle: { color: '#f5f3ef' } },
-    },
-    series: [
-      {
-        name: '발전량',
-        type: 'line',
-        smooth: true,
-        symbol: 'circle',
-        symbolSize: 7,
-        lineStyle: { width: 3 },
-        areaStyle: { color: 'rgba(24, 95, 165, 0.08)' },
-        data: measurements.map((point) => roundChartValue(point.powerKw)),
+  useEffect(() => {
+    if (!selectedPlantId) {
+      setDashboardSummary(null)
+      setSummaryError('발전소 데이터 없음')
+      return
+    }
+
+    let isActive = true
+
+    const fetchDashboardSummary = () => {
+      getDashboardSummary(selectedPlantId)
+        .then((summaryResponse) => {
+          if (!isActive) {
+            return
+          }
+
+          setDashboardSummary(summaryResponse.data)
+          setSummaryError('')
+        })
+        .catch((error) => {
+          if (!isActive) {
+            return
+          }
+
+          console.error('대시보드 요약 조회 실패:', error)
+          setDashboardSummary(null)
+          setSummaryError(error instanceof Error ? error.message : '요약 API 조회 실패')
+        })
+    }
+
+    fetchDashboardSummary()
+    const pollingTimer = window.setInterval(fetchDashboardSummary, 5000)
+
+    return () => {
+      isActive = false
+      window.clearInterval(pollingTimer)
+    }
+  }, [refreshKey, selectedPlantId])
+
+  useEffect(() => {
+    if (!selectedPlantId) {
+      setForecasts([])
+      setForecastError('발전소 데이터 없음')
+      return
+    }
+
+    let isActive = true
+
+    const fetchForecasts = () => {
+      getForecast(selectedPlantId)
+        .then((forecastResponse) => {
+          if (!isActive) {
+            return
+          }
+
+          const hasBackendData = forecastResponse.data.forecast_series.length > 0
+          setForecasts(hasBackendData ? forecastResponse.data.forecast_series : createDummyForecasts())
+          setForecastError(hasBackendData ? '' : '예측 API 데이터 없음 · 더미 데이터 표시 중')
+        })
+        .catch((error) => {
+          if (!isActive) {
+            return
+          }
+
+          console.error('AI 발전량 예측 조회 실패:', error)
+          setForecasts(createDummyForecasts())
+          setForecastError(`${error instanceof Error ? error.message : '예측 API 조회 실패'} · 더미 데이터 표시 중`)
+        })
+    }
+
+    fetchForecasts()
+    const pollingTimer = window.setInterval(fetchForecasts, 30000)
+
+    return () => {
+      isActive = false
+      window.clearInterval(pollingTimer)
+    }
+  }, [refreshKey, selectedPlantId])
+
+  useEffect(() => {
+    if (!selectedPlantId) {
+      setAnomalies([])
+      return
+    }
+
+    let isActive = true
+
+    const fetchAnomalies = () => {
+      getAnomalies(selectedPlantId, 10)
+        .then((anomalyResponse) => {
+          if (!isActive) {
+            return
+          }
+
+          setAnomalies(anomalyResponse.data)
+          setNotificationError('')
+        })
+        .catch((error) => {
+          if (!isActive) {
+            return
+          }
+
+          console.error('이상감지 알림 조회 실패:', error)
+          setAnomalies([])
+          setNotificationError(error instanceof Error ? error.message : '이상감지 알림을 불러오지 못했습니다.')
+        })
+    }
+
+    fetchAnomalies()
+    const pollingTimer = window.setInterval(fetchAnomalies, 5000)
+
+    return () => {
+      isActive = false
+      window.clearInterval(pollingTimer)
+    }
+  }, [refreshKey, selectedPlantId])
+
+  const generationChartOption = useMemo<EChartsCoreOption>(() => {
+    const powerValues = measurements.map((point) => point.powerKw)
+    const axisInterval = getGenerationAxisInterval(selectedGenerationRange)
+    const axisMax = Math.ceil(Date.now() / axisInterval) * axisInterval
+    const axisMin = axisMax - getGenerationRangeDuration(selectedGenerationRange)
+
+    return {
+      color: ['#185fa5'],
+      grid: { top: 16, right: 16, bottom: 28, left: 48 },
+      graphic: measurements.length === 0
+        ? {
+            type: 'text',
+            left: 'center',
+            top: 'middle',
+            style: {
+              text: measurementError || '계측 API 데이터 없음',
+              fill: '#888780',
+              fontSize: 13,
+              fontWeight: 600,
+            },
+          }
+        : undefined,
+      tooltip: {
+        trigger: 'axis',
+        valueFormatter: (value: unknown) => (typeof value === 'number' ? `${value} kW` : '-'),
       },
-    ],
-  }), [measurements, selectedGenerationRange])
+      xAxis: {
+        type: 'time',
+        min: axisMin,
+        max: axisMax,
+        interval: axisInterval,
+        boundaryGap: false,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: {
+          color: '#c4c2bb',
+          fontSize: 9,
+          hideOverlap: true,
+          formatter: (value: number) => formatGenerationChartTime(value, selectedGenerationRange),
+        },
+        splitLine: { show: true, lineStyle: { color: '#f5f3ef' } },
+      },
+      yAxis: {
+        type: 'value',
+        min: 0,
+        max: getPowerAxisMax(powerValues),
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: '#c4c2bb', fontSize: 9 },
+        splitLine: { lineStyle: { color: '#f5f3ef' } },
+      },
+      series: [
+        {
+          name: '발전량',
+          type: 'line',
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: 7,
+          lineStyle: { width: 3 },
+          areaStyle: { color: 'rgba(24, 95, 165, 0.08)' },
+          data: measurements.map((point) => [parseBackendDateTime(point.measuredAt), roundChartValue(point.powerKw)]),
+        },
+      ],
+    }
+  }, [measurementError, measurements, selectedGenerationRange])
 
   const forecastChartOption = useMemo<EChartsCoreOption>(() => {
     const actualMeasurements = measurements.slice(-5)
     const latestActualMeasurement = actualMeasurements[actualMeasurements.length - 1]
+    const hasForecastChartData = actualMeasurements.length > 0 || forecasts.length > 0
     const labels = [
       ...actualMeasurements.map((point) => formatChartDate(point.measuredAt)),
       ...forecasts.map((point) => formatChartDate(point.target_time)),
@@ -292,10 +508,27 @@ export function DashboardPage() {
       latestActualMeasurement ? roundChartValue(latestActualMeasurement.powerKw) : null,
       ...forecasts.map((point) => roundChartValue(point.predicted_power_kw)),
     ]
+    const chartValues = [
+      ...actualMeasurements.map((point) => point.powerKw),
+      ...forecasts.map((point) => point.predicted_power_kw),
+    ]
 
     return {
       color: ['#1d9e75', '#185fa5'],
-      grid: { top: 16, right: 16, bottom: 34, left: 28 },
+      grid: { top: 16, right: 16, bottom: 34, left: 48 },
+      graphic: !hasForecastChartData
+        ? {
+            type: 'text',
+            left: 'center',
+            top: 'middle',
+            style: {
+              text: forecastError || measurementError || '예측 API 데이터 없음',
+              fill: '#888780',
+              fontSize: 13,
+              fontWeight: 600,
+            },
+          }
+        : undefined,
       tooltip: {
         trigger: 'axis',
         valueFormatter: (value: unknown) => (typeof value === 'number' ? `${value} kW` : '-'),
@@ -317,8 +550,8 @@ export function DashboardPage() {
       },
       yAxis: {
         type: 'value',
-        min: 40,
-        max: 100,
+        min: 0,
+        max: getPowerAxisMax(chartValues),
         axisLine: { show: false },
         axisTick: { show: false },
         axisLabel: { color: '#c4c2bb', fontSize: 9 },
@@ -344,7 +577,7 @@ export function DashboardPage() {
         },
       ],
     }
-  }, [forecasts, measurements])
+  }, [forecastError, forecasts, measurementError, measurements])
 
   const shapChartOption = useMemo<EChartsCoreOption>(() => ({
     grid: { top: 4, right: 58, bottom: 0, left: 58 },
@@ -412,7 +645,7 @@ export function DashboardPage() {
       <main className={styles.mainContent}>
         <header className={styles.headerBar}>
           <div className={styles.headerTitle}>
-            <h1>전북 익산 1호 발전소</h1>
+            <h1>{selectedPlant?.name ?? '발전소 대시보드'}</h1>
             <span className={styles.statusBadge}>
               <span aria-hidden="true" />
               정상 운영
@@ -421,9 +654,61 @@ export function DashboardPage() {
           </div>
 
           <div className={styles.headerActions}>
-            <button className={styles.iconButton} type="button" aria-label="알림">🔔<span /></button>
-            <button className={styles.iconButton} type="button" aria-label="설정">⚙</button>
-            <button className={styles.refreshButton} type="button" aria-label="새로고침">↻</button>
+            <div className={styles.notificationWrap}>
+              <button
+                className={styles.iconButton}
+                type="button"
+                aria-label="알림"
+                aria-expanded={isNotificationOpen}
+                aria-haspopup="menu"
+                onClick={() => setIsNotificationOpen((isOpen) => !isOpen)}
+              >
+                🔔
+                {hasNotifications ? <span className={styles.notificationDot} aria-hidden="true" /> : null}
+              </button>
+
+              {isNotificationOpen ? (
+                <div className={styles.notificationDropdown} role="menu" aria-label="이상 감지 알림">
+                  <header>
+                    <strong>알림</strong>
+                    <span>{hasNotifications ? `${activeAnomalies.length}건` : '새 알림 없음'}</span>
+                  </header>
+
+                  {notificationError ? (
+                    <p className={styles.notificationEmpty}>{notificationError}</p>
+                  ) : hasNotifications ? (
+                    <div className={styles.notificationList}>
+                      {activeAnomalies.map((anomaly) => (
+                        <Link
+                          key={anomaly.eventId}
+                          className={[styles.notificationItem, styles[getAnomalyTone(anomaly.severity)]].join(' ')}
+                          to={getAnomalyDetailPath(anomaly.eventId)}
+                          role="menuitem"
+                        >
+                          <span className={styles.notificationSeverity}>{anomaly.severity}</span>
+                          <div>
+                            <strong>{anomaly.summary}</strong>
+                            <p>{anomaly.cause || anomaly.recommendedAction || anomaly.xaiExplanation || '이상 이벤트 상세 확인이 필요합니다.'}</p>
+                            <time>{formatNotificationTime(anomaly.detectedAt)}</time>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className={styles.notificationEmpty}>현재 확인할 이상 감지 알림이 없습니다.</p>
+                  )}
+                </div>
+              ) : null}
+            </div>
+            <DashboardSettingsMenu />
+            <button
+              className={styles.refreshButton}
+              type="button"
+              aria-label="새로고침"
+              onClick={() => setRefreshKey((key) => key + 1)}
+            >
+              ↻
+            </button>
           </div>
         </header>
 
@@ -456,7 +741,7 @@ export function DashboardPage() {
                   <h2 id="generation-title">실시간 발전량</h2>
                   <span className={styles.liveBadge}><span />Live</span>
                 </div>
-                <p>kW · 백엔드 계측 데이터{isUsingFallbackChartData ? ' · 샘플 표시 중' : ''}</p>
+                <p>{measurementError || 'kW · 백엔드 계측 데이터 실시간 반영'}</p>
               </div>
               <div className={styles.segmentedControl} aria-label="차트 범위">
                 {generationRanges.map((range) => (
@@ -487,7 +772,7 @@ export function DashboardPage() {
                   <h2 id="forecast-title">AI 발전량 예측 (2~3일)</h2>
                   <span className={styles.aiBadge}>AI Powered</span>
                 </div>
-                <p>XGBoost 기반 · 백엔드 예측 API 연동{isUsingFallbackChartData ? ' · 샘플 표시 중' : ''}</p>
+                <p>{forecastError || 'XGBoost 기반 · 백엔드 예측 API 연동'}</p>
               </div>
             </div>
 
@@ -526,23 +811,27 @@ export function DashboardPage() {
             </div>
 
             <div className={styles.alertList}>
-              {alerts.map((alert) => (
-                <article key={alert.title} className={[styles.alertItem, styles[alert.tone]].join(' ')}>
-                  <div className={styles.alertTags}>
-                    <span>{alert.severity}</span>
-                    <small>{alert.category}</small>
-                  </div>
-                  <div className={styles.alertCopy}>
-                    <h3>{alert.title}</h3>
-                    <p>{alert.detail}</p>
-                    <time>{alert.time}</time>
-                  </div>
-                  <div className={styles.alertAction}>
-                    <Link to="/anomaly-detection/detail">확인하기</Link>
-                    <small>✉ 메일 발송됨</small>
-                  </div>
-                </article>
-              ))}
+              {activeAnomalies.length > 0 ? (
+                activeAnomalies.map((anomaly) => (
+                  <article key={anomaly.eventId} className={[styles.alertItem, styles[getAnomalyTone(anomaly.severity)]].join(' ')}>
+                    <div className={styles.alertTags}>
+                      <span>{anomaly.severity}</span>
+                      <small>{anomaly.type}</small>
+                    </div>
+                    <div className={styles.alertCopy}>
+                      <h3>{anomaly.summary}</h3>
+                      <p>{anomaly.cause || anomaly.recommendedAction || anomaly.xaiExplanation || '이상 이벤트 상세 확인이 필요합니다.'}</p>
+                      <time>{formatNotificationTime(anomaly.detectedAt)}</time>
+                    </div>
+                    <div className={styles.alertAction}>
+                      <Link to={getAnomalyDetailPath(anomaly.eventId)}>확인하기</Link>
+                      <small>{anomaly.status}</small>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <div className={styles.emptyAlert}>현재 감지된 이상 이벤트가 없습니다.</div>
+              )}
             </div>
           </section>
         </div>

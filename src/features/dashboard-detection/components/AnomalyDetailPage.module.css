@@ -325,6 +325,12 @@
   background: #1d9e75;
 }
 
+.headerActions button:disabled {
+  color: #b4b2a9;
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
 .content {
   display: grid;
   grid-template-columns: minmax(440px, 600px) minmax(380px, 536px);
@@ -510,12 +516,48 @@
   color: #e24b4a;
 }
 
+.highBadge.red,
+.chatSeverity.red {
+  color: #e24b4a;
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.highBadge.red i,
+.chatSeverity.red i {
+  background: #e24b4a;
+}
+
 .amber {
   color: #ba7517;
 }
 
+.highBadge.amber,
+.chatSeverity.amber {
+  color: #ba7517;
+  border-color: #fac775;
+  background: #fffbf0;
+}
+
+.highBadge.amber i,
+.chatSeverity.amber i {
+  background: #ba7517;
+}
+
 .blue {
   color: #185fa5;
+}
+
+.highBadge.blue,
+.chatSeverity.blue {
+  color: #185fa5;
+  border-color: #b5d4f4;
+  background: #e6f1fb;
+}
+
+.highBadge.blue i,
+.chatSeverity.blue i {
+  background: #185fa5;
 }
 
 .green {

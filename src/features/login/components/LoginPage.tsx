@@ -170,21 +170,6 @@ export function LoginPage() {
             </button>
           </form>
 
-          <div className={styles.divider} aria-hidden="true">
-            <span />
-            <p>또는 소셜 계정으로 로그인</p>
-            <span />
-          </div>
-
-          <div className={styles.socialActions}>
-            <button type="button" className={styles.googleButton} onClick={handleSocialLogin}>
-              G&nbsp;&nbsp;Google로 로그인
-            </button>
-            <button type="button" className={styles.kakaoButton} onClick={handleSocialLogin}>
-              카카오로 로그인
-            </button>
-          </div>
-
           <p className={styles.signupRow}>
             <span>아직 계정이 없으신가요?</span>
             <Link to="/signup">무료 회원가입하기 →</Link>

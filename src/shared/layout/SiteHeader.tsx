@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useHideOnScroll } from '@/shared/hooks/useHideOnScroll'
 import styles from './SiteHeader.module.css'
 
@@ -9,8 +10,55 @@ type SiteHeaderProps = {
   ariaLabel?: string
 }
 
+type StoredUser = {
+  name?: unknown
+  email?: unknown
+}
+
+function getStoredUserName() {
+  const storedUser = localStorage.getItem('user')
+
+  if (!storedUser || !localStorage.getItem('accessToken')) {
+    return ''
+  }
+
+  try {
+    const user = JSON.parse(storedUser) as StoredUser
+    const name = typeof user.name === 'string' ? user.name.trim() : ''
+    const email = typeof user.email === 'string' ? user.email.trim() : ''
+
+    return name || email
+  } catch {
+    return ''
+  }
+}
+
 export function SiteHeader({ active, ariaLabel = '주요 메뉴' }: SiteHeaderProps) {
   const isHeaderHidden = useHideOnScroll()
+  const navigate = useNavigate()
+  const [userName, setUserName] = useState('')
+
+  useEffect(() => {
+    const syncAuthState = () => {
+      setUserName(getStoredUserName())
+    }
+
+    syncAuthState()
+    window.addEventListener('storage', syncAuthState)
+    window.addEventListener('solarwise-auth-change', syncAuthState)
+
+    return () => {
+      window.removeEventListener('storage', syncAuthState)
+      window.removeEventListener('solarwise-auth-change', syncAuthState)
+    }
+  }, [])
+
+  const handleLogout = () => {
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('user')
+    window.dispatchEvent(new Event('solarwise-auth-change'))
+    navigate('/')
+  }
 
   return (
     <header className={[styles.header, 'gnb-scroll-header', isHeaderHidden ? 'gnb-scroll-header--hidden' : ''].filter(Boolean).join(' ')}>
@@ -34,19 +82,34 @@ export function SiteHeader({ active, ariaLabel = '주요 메뉴' }: SiteHeaderPr
           </nav>
 
           <div className={styles.headerActions}>
-            {active === 'login' ? (
-              <span className={styles.activeLink}>로그인</span>
+            {userName ? (
+              <span className={styles.userName}>{userName} 관리자님</span>
             ) : (
-              <Link to="/login" className={styles.loginLink}>
-                로그인
-              </Link>
+              <>
+                {active === 'login' ? (
+                  <span className={styles.activeLink}>로그인</span>
+                ) : (
+                  <Link to="/login" className={styles.loginLink}>
+                    로그인
+                  </Link>
+                )}
+              </>
             )}
-            {active === 'signup' ? (
-              <span className={styles.headerButton}>회원가입</span>
+
+            {userName ? (
+              <button type="button" className={styles.headerButton} onClick={handleLogout}>
+                로그아웃
+              </button>
             ) : (
-              <Link to="/signup" className={styles.headerButton}>
-                회원가입
-              </Link>
+              <>
+                {active === 'signup' ? (
+                  <span className={styles.headerButton}>회원가입</span>
+                ) : (
+                  <Link to="/signup" className={styles.headerButton}>
+                    회원가입
+                  </Link>
+                )}
+              </>
             )}
           </div>
         </div>

@@ -15,6 +15,8 @@ const footerColumns = [
   },
 ] as const
 
+const socialLinks = ['LinkedIn', 'GitHub', 'YouTube'] as const
+
 type SiteFooterProps = {
   id?: string
 }
@@ -55,9 +57,14 @@ export function SiteFooter({ id = 'resources' }: SiteFooterProps) {
 
       <div className={[styles.container, styles.footerMeta].join(' ')}>
         <p>© 2026 SolarWise · 개인정보처리방침 · 이용약관</p>
-        <a href="https://github.com/Plumby325/SolarWise" target="_blank" rel="noreferrer">
-          GitHub
-        </a>
+        <div className={styles.socialLinks} aria-label="소셜 링크">
+          {socialLinks.map((link, index) => (
+            <span key={link}>
+              {index > 0 ? ' · ' : ''}
+              {link}
+            </span>
+          ))}
+        </div>
       </div>
     </footer>
   )

@@ -1,0 +1,587 @@
+.page {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  min-height: 100vh;
+  color: #0d1b2a;
+  background: #f0f2f5;
+}
+
+.main {
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 68px;
+  padding: 0 24px;
+  border-bottom: 1px solid #e8e6e0;
+  background: #ffffff;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.header p,
+.panelHeader p {
+  margin: 3px 0 0;
+  color: #888780;
+  font-size: 12px;
+}
+
+.periodControls,
+.unitControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.periodControls span,
+.unitControls span {
+  color: #b4b2a9;
+  font-size: 10px;
+}
+
+.periodControls button,
+.unitControls button {
+  min-width: 52px;
+  min-height: 28px;
+  border: 1px solid #eceae4;
+  border-radius: 7px;
+  color: #888780;
+  background: #f8f9fa;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.periodControls .periodActive,
+.unitControls .unitActive {
+  border-color: #185fa5;
+  color: #ffffff;
+  background: #185fa5;
+  font-weight: 700;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  padding: 16px 24px;
+}
+
+.summaryCard {
+  position: relative;
+  min-height: 108px;
+  padding: 15px 16px 12px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.summaryCard::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: #185fa5;
+  content: '';
+}
+
+.summaryCard.green::before {
+  background: #1d9e75;
+}
+
+.summaryCard.amber::before {
+  background: #ba7517;
+}
+
+.summaryCard p {
+  margin: 0;
+  color: #888780;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.summaryCard strong {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 4px;
+  color: #0d1b2a;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.summaryCard strong span {
+  color: #888780;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.summaryIcon {
+  position: absolute;
+  top: 20px;
+  right: 16px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #185fa5;
+  background: #e6f1fb;
+  font-size: 15px;
+}
+
+.green .summaryIcon {
+  color: #1d9e75;
+  background: #eaf7f2;
+}
+
+.amber .summaryIcon {
+  color: #ba7517;
+  background: #fff3e8;
+}
+
+.summaryCard footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+  padding-top: 8px;
+  border-top: 1px solid #f0ede8;
+  color: #888780;
+  font-size: 11px;
+}
+
+.summaryCard footer span {
+  color: #888780;
+}
+
+.summaryCard em {
+  color: #e24b4a;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.green em {
+  color: #1d9e75;
+}
+
+.chartPanel,
+.panel {
+  overflow: hidden;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.chartPanel {
+  margin: 0 24px;
+}
+
+.panelHeader {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  min-height: 56px;
+  padding: 16px 20px 0;
+  border-bottom: 1px solid #f0ede8;
+}
+
+.panelHeader h2 {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.aiBadge {
+  margin-left: 24px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: #185fa5;
+  background: #e6f1fb;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.unitControls {
+  margin-left: auto;
+}
+
+.forecastChart {
+  position: relative;
+  height: 284px;
+  padding: 20px 24px 36px 56px;
+}
+
+.forecastChart::before {
+  position: absolute;
+  top: 68px;
+  right: 24px;
+  bottom: 56px;
+  left: 56px;
+  background:
+    repeating-linear-gradient(to bottom, #f5f3ef 0 1px, transparent 1px 47px),
+    repeating-linear-gradient(to right, transparent 0 calc(33.333% - 1px), #f5f3ef calc(33.333% - 1px) 33.333%);
+  content: '';
+}
+
+.forecastChart svg {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 232px;
+}
+
+.confidenceBand {
+  fill: url('#confidenceArea');
+}
+
+.actualLine,
+.predictedLine {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.actualLine {
+  stroke: #1d9e75;
+  stroke-width: 2.5;
+}
+
+.predictedLine {
+  stroke: rgba(24, 95, 165, 0.85);
+  stroke-width: 2;
+}
+
+.nowLine {
+  stroke: rgba(180, 178, 169, 0.6);
+  stroke-width: 1;
+}
+
+.currentMarker {
+  position: absolute;
+  top: 48px;
+  left: 136px;
+  color: #888780;
+  font-size: 8px;
+  font-weight: 500;
+}
+
+.yAxis {
+  position: absolute;
+  top: 64px;
+  bottom: 58px;
+  left: 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #c4c2bb;
+  font-size: 9px;
+}
+
+.xAxis {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  left: 42px;
+  display: flex;
+  justify-content: space-between;
+  color: #c4c2bb;
+  font-size: 9px;
+}
+
+.legend {
+  position: absolute;
+  bottom: 2px;
+  left: 44px;
+  display: flex;
+  gap: 72px;
+  color: #5f5e5a;
+  font-size: 9px;
+}
+
+.legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend i {
+  display: inline-block;
+  flex: 0 0 auto;
+}
+
+.actualDot,
+.predictedDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.actualDot {
+  background: #1d9e75;
+}
+
+.predictedDot {
+  background: #185fa5;
+}
+
+.bandKey {
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+  background: rgba(24, 95, 165, 0.2);
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 16px 24px 24px;
+}
+
+.panel {
+  min-height: 492px;
+}
+
+.shapList {
+  padding: 12px 20px 20px;
+}
+
+.shapItem {
+  position: relative;
+  min-height: 72px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid #f5f3ef;
+}
+
+.shapItem + .shapItem {
+  padding-top: 12px;
+}
+
+.shapItem header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.shapItem h3 {
+  margin: 0;
+  font-size: 12px;
+}
+
+.shapItem p {
+  margin: 6px 0 10px;
+  color: #888780;
+  font-size: 11px;
+}
+
+.shapItem > strong {
+  position: absolute;
+  bottom: 12px;
+  left: calc(20px + var(--label-offset, 0px));
+  font-size: 10px;
+}
+
+.shapBar {
+  width: min(368px, calc(100% - 160px));
+  height: 12px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #f0ede8;
+}
+
+.shapBar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+
+.blue {
+  color: #185fa5;
+}
+
+.blue .shapBar span,
+.shapBar .blue {
+  background: rgba(24, 95, 165, 0.85);
+}
+
+.red {
+  color: #e24b4a;
+}
+
+.red .shapBar span,
+.shapBar .red {
+  background: rgba(226, 75, 74, 0.85);
+}
+
+.green {
+  color: #1d9e75;
+}
+
+.green .shapBar span,
+.shapBar .green {
+  background: rgba(29, 158, 117, 0.85);
+}
+
+.amber {
+  color: #ba7517;
+}
+
+.amber .shapBar span,
+.shapBar .amber {
+  background: rgba(186, 117, 23, 0.85);
+}
+
+.weatherGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px 20px 16px;
+}
+
+.weatherCard {
+  position: relative;
+  min-height: 84px;
+  padding: 14px 12px 10px;
+  border-radius: 10px;
+  background: #f8f9fa;
+}
+
+.weatherCard::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: currentColor;
+  content: '';
+}
+
+.weatherCard span {
+  display: inline-block;
+  margin-right: 8px;
+  font-size: 18px;
+}
+
+.weatherCard p {
+  display: inline;
+  margin: 0;
+  color: #888780;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.weatherCard strong {
+  display: block;
+  margin-top: 8px;
+  color: #0d1b2a;
+  font-size: 16px;
+}
+
+.weatherCard small {
+  display: block;
+  margin-top: 4px;
+  color: #888780;
+  font-size: 10px;
+}
+
+.gray {
+  color: #5f5e5a;
+}
+
+.weatherCard.amber {
+  background: #fff3e8;
+}
+
+.weatherCard.red {
+  background: #fef2f2;
+}
+
+.weatherCard.blue {
+  background: #e6f1fb;
+}
+
+.aiSummary {
+  min-height: 212px;
+  margin: 8px 20px 20px;
+  padding: 14px 12px;
+  border: 1px solid #eceae4;
+  border-radius: 10px;
+  background: #f8f9fa;
+}
+
+.aiSummary h3 {
+  margin: 0;
+  font-size: 12px;
+}
+
+.aiSummary p {
+  margin: 12px 0 0;
+  color: #5f5e5a;
+  font-size: 12px;
+  line-height: 22px;
+}
+
+@media (max-width: 1100px) {
+  .summaryGrid,
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .unitControls {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
+
+  .header,
+  .summaryGrid,
+  .detailGrid {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .chartPanel {
+    margin: 0 16px;
+  }
+
+  .periodControls span {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+
+  .summaryGrid {
+    gap: 12px;
+  }
+
+  .legend {
+    gap: 16px;
+  }
+
+  .weatherGrid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -157,7 +157,7 @@ const featurePreviews: Array<{
 }> = [
   {
     label: '실시간 발전량 대시보드',
-    badge: '● Live',
+    badge: 'Demo',
     ariaLabel: '실시간 발전량 추세 차트',
     option: {
       color: ['#4da3f2'],

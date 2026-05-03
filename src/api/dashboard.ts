@@ -19,6 +19,29 @@ export type MeasurementSeries = {
   series: MeasurementPoint[]
 }
 
+export type Plant = {
+  plantId: number
+  name: string
+  location: string
+  capacityKw: number
+  status: string
+  inverterModel: string | null
+  sensorSerialNumber: string | null
+}
+
+export type DashboardSummary = {
+  currentPowerKw: number
+  todayGenerationKwh: number
+  efficiencyPercent: number
+  lastUpdatedAt: string
+  latestAnomaly: {
+    exists: boolean
+    eventId?: number
+    severity?: string
+    summary?: string
+  }
+}
+
 export type ForecastPoint = {
   target_time: string
   predicted_power_kw: number
@@ -30,6 +53,23 @@ export type ForecastPoint = {
 export type ForecastResponse = {
   plant_id: string
   forecast_series: ForecastPoint[]
+}
+
+export type AnomalyEvent = {
+  eventId: number
+  type: 'POWER' | 'VISION' | string
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | string
+  detectedAt: string
+  summary: string
+  status: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED' | string
+  cause: string | null
+  recommendedAction: string | null
+  xaiExplanation: string | null
+}
+
+export type UpdateAnomalyStatusResponse = {
+  eventId: number
+  status: AnomalyEvent['status']
 }
 
 export function getMeasurements(plantId: number, from?: string, to?: string) {
@@ -47,6 +87,29 @@ export function getMeasurements(plantId: number, from?: string, to?: string) {
   return apiClient<ApiResponse<MeasurementSeries>>(`/api/v1/plants/${plantId}/measurements${query ? `?${query}` : ''}`)
 }
 
+export function getDashboardSummary(plantId: number) {
+  return apiClient<ApiResponse<DashboardSummary>>(`/api/v1/plants/${plantId}/dashboard/summary`)
+}
+
 export function getForecast(plantId: number) {
   return apiClient<ApiResponse<ForecastResponse>>(`/api/v1/plants/${plantId}/forecasts`)
+}
+
+export function getAnomalies(plantId: number, limit = 5) {
+  return apiClient<ApiResponse<AnomalyEvent[]>>(`/api/v1/plants/${plantId}/anomalies?limit=${limit}`)
+}
+
+export function getAnomalyDetail(plantId: number, eventId: number) {
+  return apiClient<ApiResponse<AnomalyEvent>>(`/api/v1/plants/${plantId}/anomalies/${eventId}`)
+}
+
+export function updateAnomalyStatus(plantId: number, eventId: number, status: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED') {
+  return apiClient<ApiResponse<UpdateAnomalyStatusResponse>>(`/api/v1/plants/${plantId}/anomalies/${eventId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  })
+}
+
+export function getPlants() {
+  return apiClient<ApiResponse<Plant[]>>('/api/v1/plants')
 }

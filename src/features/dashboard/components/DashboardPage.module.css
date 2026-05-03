@@ -311,6 +311,10 @@
   gap: 8px;
 }
 
+.notificationWrap {
+  position: relative;
+}
+
 .iconButton,
 .refreshButton {
   position: relative;
@@ -327,7 +331,7 @@
   background: #f8f9fa;
 }
 
-.iconButton span {
+.notificationDot {
   position: absolute;
   top: -3px;
   right: 7px;
@@ -335,6 +339,100 @@
   height: 8px;
   border-radius: 50%;
   background: #e24b4a;
+}
+
+.notificationDropdown {
+  position: absolute;
+  top: 42px;
+  right: 0;
+  z-index: 20;
+  width: 340px;
+  overflow: hidden;
+  border: 1px solid #eceae4;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 18px 48px rgba(13, 27, 42, 0.16);
+}
+
+.notificationDropdown header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 46px;
+  padding: 0 16px;
+  border-bottom: 1px solid #f0ede8;
+}
+
+.notificationDropdown header strong {
+  color: #0d1b2a;
+  font-size: 13px;
+}
+
+.notificationDropdown header span {
+  color: #e24b4a;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.notificationList {
+  display: grid;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.notificationItem {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f5f3ef;
+  color: currentColor;
+  text-decoration: none;
+  background: #ffffff;
+}
+
+.notificationItem:hover {
+  background: color-mix(in srgb, currentColor 5%, #ffffff);
+}
+
+.notificationSeverity {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  border-radius: 6px;
+  background: color-mix(in srgb, currentColor 12%, #ffffff);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.notificationItem strong {
+  display: block;
+  color: #0d1b2a;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.notificationItem p {
+  margin: 5px 0 0;
+  color: #888780;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.notificationItem time {
+  display: block;
+  margin-top: 6px;
+  color: #b4b2a9;
+  font-size: 10px;
+}
+
+.notificationEmpty {
+  margin: 0;
+  padding: 22px 16px;
+  color: #888780;
+  font-size: 12px;
+  text-align: center;
 }
 
 .refreshButton {
@@ -711,6 +809,17 @@
   display: grid;
   gap: 12px;
   padding: 8px 20px 20px;
+}
+
+.emptyAlert {
+  display: grid;
+  place-items: center;
+  min-height: 76px;
+  border: 1px dashed #d8d6cf;
+  border-radius: 10px;
+  color: #888780;
+  background: #f8f9fa;
+  font-size: 12px;
 }
 
 .alertItem {

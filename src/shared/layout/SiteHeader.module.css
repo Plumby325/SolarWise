@@ -90,6 +90,16 @@
   font-weight: 500;
 }
 
+.userName {
+  max-width: 140px;
+  overflow: hidden;
+  color: #0d1b2a;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .activeLink {
   color: #0d1b2a;
   font-size: 14px;
@@ -101,6 +111,7 @@
   justify-content: center;
   min-height: 38px;
   padding: 0 20px;
+  border: 0;
   border-radius: 8px;
   color: #ffffff;
   font-size: 14px;
@@ -110,6 +121,11 @@
   transition:
     transform 0.15s ease,
     filter 0.15s ease;
+}
+
+button.headerButton {
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .headerButton:hover {
@@ -134,7 +150,8 @@
   }
 
   .loginLink,
-  .activeLink {
+  .activeLink,
+  .userName {
     display: none;
   }
 }

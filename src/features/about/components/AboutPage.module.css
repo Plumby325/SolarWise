@@ -126,8 +126,17 @@
 .hero {
   position: relative;
   overflow: hidden;
+  min-height: 480px;
   color: #ffffff;
-  background: #0d1b2a;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.02) 0,
+      rgba(255, 255, 255, 0.02) 1px,
+      transparent 1px,
+      transparent 100px
+    ),
+    #0d1b2a;
 }
 
 .hero::before,
@@ -139,16 +148,16 @@
 }
 
 .hero::before {
-  top: -120px;
-  right: -120px;
+  top: -100px;
+  right: -100px;
   width: 560px;
   height: 560px;
-  background: radial-gradient(circle, rgba(24, 95, 165, 0.18) 0%, rgba(24, 95, 165, 0) 68%);
+  background: radial-gradient(circle, rgba(24, 95, 165, 0.16) 0%, rgba(24, 95, 165, 0) 68%);
 }
 
 .hero::after {
-  bottom: -120px;
-  left: -100px;
+  bottom: -140px;
+  left: -80px;
   width: 320px;
   height: 320px;
   background: radial-gradient(circle, rgba(29, 158, 117, 0.14) 0%, rgba(29, 158, 117, 0) 68%);
@@ -183,8 +192,8 @@
 .heroTitle {
   margin: 20px 0 0;
   max-width: 760px;
-  font-size: clamp(2.5rem, 4vw, 2.75rem);
-  line-height: 1.35;
+  font-size: 40px;
+  line-height: 54px;
   letter-spacing: -0.04em;
 }
 
@@ -205,8 +214,9 @@
 
 .heroMeta {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 28px;
+  grid-template-columns: repeat(3, 380px);
+  justify-content: center;
+  gap: 30px;
   margin-top: 44px;
 }
 
@@ -236,7 +246,9 @@
 
 .valueSection,
 .backgroundSection {
-  padding: 52px 0 56px;
+  min-height: 560px;
+  padding: 52px 0 32px;
+  box-sizing: border-box;
   background: #ffffff;
 }
 
@@ -244,6 +256,15 @@
 .stackSection {
   padding: 52px 0 64px;
   background: #f8f9fa;
+}
+
+.teamSection {
+  min-height: 640px;
+}
+
+.stackSection {
+  min-height: 480px;
+  box-sizing: border-box;
 }
 
 .sectionHeader {
@@ -290,7 +311,8 @@
 }
 
 .valueGrid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, 380px);
+  justify-content: center;
   margin-top: 56px;
   gap: 40px;
 }
@@ -326,7 +348,16 @@
 }
 
 .valueIcon {
-  font-size: 24px;
+  color: #185fa5;
+  font-size: 20px;
+}
+
+.valueCardGreen .valueIcon {
+  color: #1d9e75;
+}
+
+.valueCardOrange .valueIcon {
+  color: #ba7517;
 }
 
 .valueCard h3,
@@ -368,7 +399,7 @@
   justify-content: center;
   gap: 24px;
   min-height: 56px;
-  width: min(290px, 100%);
+  width: min(380px, 100%);
   margin: 28px auto 0;
   padding: 0 24px;
   border: 1px solid #eceae4;
@@ -389,16 +420,26 @@
 }
 
 .teamGrid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 24px;
-  margin-top: 52px;
+  margin: 18px auto 0;
+}
+
+.teamRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 24px;
 }
 
 .memberCard {
   display: flex;
   flex-direction: column;
   align-items: center;
+  flex: 0 0 280px;
   min-height: 172px;
   padding: 18px 20px 20px;
   border: 1px solid #eceae4;
@@ -468,9 +509,10 @@
 }
 
 .backgroundGrid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-top: 52px;
-  gap: 32px;
+  grid-template-columns: repeat(2, 580px);
+  justify-content: center;
+  margin-top: 18px;
+  gap: 100px;
 }
 
 .backgroundCard {
@@ -576,8 +618,10 @@
 }
 
 .stackGrid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-top: 52px;
+  grid-template-columns: repeat(3, 380px);
+  justify-content: center;
+  gap: 40px;
+  margin-top: 18px;
 }
 
 .stackCard {
@@ -614,7 +658,16 @@
 }
 
 .stackIcon {
-  font-size: 22px;
+  color: #185fa5;
+  font-size: 18px;
+}
+
+.stackCardGreen .stackIcon {
+  color: #1d9e75;
+}
+
+.stackCardOrange .stackIcon {
+  color: #ba7517;
 }
 
 .stackItems {
@@ -631,18 +684,25 @@
   border: 1px solid rgba(13, 27, 42, 0.08);
   border-left: 3px solid currentColor;
   border-radius: 10px;
-  color: #185fa5;
+  color: #0d1b2a;
   font-size: 14px;
   font-weight: 500;
   background: #ffffff;
 }
 
 .stackCardGreen .stackItem {
-  color: #1d9e75;
+  border-color: #c0dd97;
+  border-left-color: #1d9e75;
 }
 
 .stackCardOrange .stackItem {
-  color: #ba7517;
+  border-color: #fac775;
+  border-left-color: #ba7517;
+}
+
+.stackCard:not(.stackCardGreen):not(.stackCardOrange) .stackItem {
+  border-color: #b5d4f4;
+  border-left-color: #185fa5;
 }
 
 .ctaSection {
@@ -845,7 +905,7 @@
     grid-template-columns: 1fr;
   }
 
-  .teamGrid {
+  .teamRow {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
@@ -865,7 +925,8 @@
     grid-template-columns: 1fr;
   }
 
-  .teamGrid {
+  .teamRow {
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -909,7 +970,7 @@
     align-items: stretch;
   }
 
-  .teamGrid {
+  .teamRow {
     grid-template-columns: 1fr;
   }
 

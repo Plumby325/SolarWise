@@ -48,4 +48,5 @@ export function login(request: LoginRequest) {
 export function saveAuthSession(response: LoginResponse) {
   localStorage.setItem('accessToken', response.accessToken)
   localStorage.setItem('user', JSON.stringify(response.user))
+  window.dispatchEvent(new Event('solarwise-auth-change'))
 }

@@ -1,36 +1,9 @@
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { getAnomalyDetail, getPlants, updateAnomalyStatus } from '@/api'
+import type { AnomalyEvent } from '@/api'
 import { DashboardSidebar } from '@/shared/layout/DashboardSidebar'
 import styles from './AnomalyDetailPage.module.css'
-
-const evidenceMetrics = [
-  { label: '출력 저하율', value: '70%', size: '70%', tone: 'red' },
-  { label: '일사량 편차', value: '45%', size: '45%', tone: 'amber' },
-  { label: '패널 표면 상태', value: '28%', size: '28%', tone: 'blue' },
-] as const
-
-const historyItems = [
-  { time: '13:40', title: '이상 감지', detail: '발전량 이상 자동 감지', tone: 'red' },
-  { time: '13:41', title: '알림 발송', detail: 'alert@solarwise.com 발송 완료', tone: 'green' },
-  { time: '13:45', title: '확인 중', detail: '담당자 확인 중', tone: 'muted' },
-] as const
-
-const messages = [
-  {
-    type: 'ai',
-    lines: ['안녕하세요! 이번 이상 이벤트의 원인을 설명드릴게요.', '출력 저하율(70%)이 주요 원인으로 패널 오염 가능성이 높습니다.'],
-  },
-  { type: 'user', lines: ['왜 발전량이 갑자기 떨어졌나요?'] },
-  {
-    type: 'ai',
-    lines: ['일사량(710W/m²)은 정상이지만 출력이 -28% 감소했습니다.', '• 출력 저하율 70% · 일사량 편차 45% 기여', '즉각적인 패널 점검을 권장합니다.'],
-  },
-  { type: 'reference', lines: ['🔗 참조: 예측 설명 · 최근 계측 · 비전 분석'] },
-  { type: 'user', lines: ['패널 청소가 효과가 있을까요?'] },
-  {
-    type: 'ai',
-    lines: ['비전 분석 결과 패널 표면 오염이 감지되었습니다.', '청소 후 약 8~12% 출력 회복이 예상됩니다.'],
-  },
-] as const
 
 const quickQuestions = [
   '패널 청소 주기는 언제인가요?',
@@ -38,7 +11,202 @@ const quickQuestions = [
   '언제 해결될까요?',
 ] as const
 
+function formatDetectedAt(value: string) {
+  return new Intl.DateTimeFormat('ko-KR', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(value))
+}
+
+function formatTime(value: string) {
+  return new Intl.DateTimeFormat('ko-KR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(value))
+}
+
+function getFallbackText(value: string | null | undefined, fallback: string) {
+  return value?.trim() ? value : fallback
+}
+
+function getRecommendedActions(value: string | null | undefined) {
+  const text = getFallbackText(value, '담당자가 이벤트를 확인한 뒤 현장 점검 및 조치 내용을 등록하세요.')
+  return text
+    .split(/\r?\n|[.;]/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+}
+
+function getSeverityTone(severity: string | undefined) {
+  if (severity === 'LOW') {
+    return 'blue'
+  }
+
+  if (severity === 'MEDIUM') {
+    return 'amber'
+  }
+
+  return 'red'
+}
+
 export function AnomalyDetailPage() {
+  const [searchParams] = useSearchParams()
+  const eventId = Number(searchParams.get('eventId'))
+  const [plantId, setPlantId] = useState<number | null>(null)
+  const [event, setEvent] = useState<AnomalyEvent | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+  const hasValidEventId = Number.isFinite(eventId) && eventId > 0
+
+  const historyItems = useMemo(() => {
+    if (!event) {
+      return []
+    }
+
+    const items = [
+      { time: formatTime(event.detectedAt), title: '이상 감지', detail: event.summary, tone: 'red' },
+    ]
+
+    if (event.status === 'ACKNOWLEDGED' || event.status === 'RESOLVED') {
+      items.push({ time: '현재', title: '확인 완료', detail: '담당자가 이상 이벤트를 확인했습니다.', tone: 'green' })
+    }
+
+    if (event.status === 'RESOLVED') {
+      items.push({ time: '현재', title: '해결 완료', detail: '이상 이벤트가 해결 상태로 변경되었습니다.', tone: 'green' })
+    }
+
+    return items
+  }, [event])
+
+  const aiMessages = useMemo(() => {
+    if (!event) {
+      return []
+    }
+
+    return [
+      {
+        type: 'ai',
+        lines: [
+          `이상 이벤트 #${event.eventId}의 내용을 요약해드릴게요.`,
+          getFallbackText(event.cause, '아직 등록된 원인 분석 내용이 없습니다.'),
+        ],
+      },
+      {
+        type: 'reference',
+        lines: [`참조: ${event.type} 유형 · ${event.severity} 심각도 · ${event.status} 상태`],
+      },
+      {
+        type: 'ai',
+        lines: [
+          getFallbackText(event.xaiExplanation, '아직 등록된 XAI 판단 근거가 없습니다.'),
+          getFallbackText(event.recommendedAction, '권장 조치는 담당자 확인 후 등록하세요.'),
+        ],
+      },
+    ] as const
+  }, [event])
+
+  useEffect(() => {
+    let isActive = true
+
+    getPlants()
+      .then((response) => {
+        if (!isActive) {
+          return
+        }
+
+        const firstPlantId = response.data[0]?.plantId ?? null
+        setPlantId(firstPlantId)
+
+        if (!firstPlantId) {
+          setErrorMessage('조회 가능한 발전소가 없습니다.')
+          setIsLoading(false)
+        }
+      })
+      .catch((error) => {
+        if (!isActive) {
+          return
+        }
+
+        setErrorMessage(error instanceof Error ? error.message : '발전소 목록을 불러오지 못했습니다.')
+        setIsLoading(false)
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!plantId || !hasValidEventId) {
+      if (!hasValidEventId) {
+        setErrorMessage('상세 조회할 이벤트 ID가 없습니다.')
+        setIsLoading(false)
+      }
+      return
+    }
+
+    let isActive = true
+
+    const fetchEvent = () => {
+      getAnomalyDetail(plantId, eventId)
+        .then((response) => {
+          if (!isActive) {
+            return
+          }
+
+          setEvent(response.data)
+          setErrorMessage('')
+          setIsLoading(false)
+        })
+        .catch((error) => {
+          if (!isActive) {
+            return
+          }
+
+          setErrorMessage(error instanceof Error ? error.message : '이상 이벤트 상세를 불러오지 못했습니다.')
+          setIsLoading(false)
+        })
+    }
+
+    fetchEvent()
+    const pollingTimer = window.setInterval(fetchEvent, 5000)
+
+    return () => {
+      isActive = false
+      window.clearInterval(pollingTimer)
+    }
+  }, [eventId, hasValidEventId, plantId])
+
+  const handleStatusChange = (status: 'ACKNOWLEDGED' | 'RESOLVED') => {
+    if (!plantId || !event) {
+      return
+    }
+
+    setIsUpdating(true)
+    setErrorMessage('')
+
+    updateAnomalyStatus(plantId, event.eventId, status)
+      .then((response) => {
+        setEvent((currentEvent) => (currentEvent ? { ...currentEvent, status: response.data.status } : currentEvent))
+      })
+      .catch((error) => {
+        setErrorMessage(error instanceof Error ? error.message : '이벤트 상태 변경에 실패했습니다.')
+      })
+      .finally(() => {
+        setIsUpdating(false)
+      })
+  }
+
+  const recommendedActions = getRecommendedActions(event?.recommendedAction)
+  const isAcknowledged = event?.status === 'ACKNOWLEDGED'
+  const isResolved = event?.status === 'RESOLVED'
+  const severityTone = getSeverityTone(event?.severity)
+
   return (
     <div className={styles.page}>
       <DashboardSidebar activeSection="anomaly" />
@@ -48,13 +216,25 @@ export function AnomalyDetailPage() {
           <div className={styles.headerTitle}>
             <Link className={styles.backButton} to="/anomaly-detection">← 목록</Link>
             <h1>이상 이벤트 상세</h1>
-            <span className={styles.highBadge}><i />HIGH</span>
-            <span className={styles.openBadge}>OPEN</span>
+            <span className={[styles.highBadge, styles[severityTone]].join(' ')}><i />{event?.severity ?? '-'}</span>
+            <span className={styles.openBadge}>{event?.status ?? '-'}</span>
           </div>
 
           <div className={styles.headerActions}>
-            <button type="button">✓ 확인 완료</button>
-            <button type="button">✓ 해결 완료</button>
+            <button
+              type="button"
+              onClick={() => handleStatusChange('ACKNOWLEDGED')}
+              disabled={!event || isUpdating || isAcknowledged || isResolved}
+            >
+              {isAcknowledged || isResolved ? '✓ 확인 완료' : '✓ 확인 완료'}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleStatusChange('RESOLVED')}
+              disabled={!event || isUpdating || isResolved}
+            >
+              ✓ 해결 완료
+            </button>
           </div>
         </header>
 
@@ -63,52 +243,43 @@ export function AnomalyDetailPage() {
             <div className={styles.panelHeader}>
               <div>
                 <h2 id="event-info-title">이벤트 정보</h2>
-                <p>오늘 13:40 · POWER 유형</p>
+                <p>
+                  {event ? `${formatDetectedAt(event.detectedAt)} · ${event.type} 유형` : '이벤트 정보를 불러오는 중입니다.'}
+                </p>
               </div>
             </div>
 
             <article className={styles.eventSummary}>
-              <h3>예상 대비 발전량 28% 감소</h3>
-              <p>일사량 정상 범위 · 인버터 연결 확인 필요</p>
+              <h3>{event?.summary ?? (isLoading ? '이벤트 상세를 불러오는 중입니다.' : '이벤트를 찾을 수 없습니다.')}</h3>
+              <p>{errorMessage || (event ? `${event.severity} · ${event.status}` : '상세 조회할 이벤트를 선택해 주세요.')}</p>
             </article>
 
             <section className={styles.sectionBlock} aria-labelledby="measurement-title">
-              <h3 id="measurement-title">측정값 비교</h3>
+              <h3 id="measurement-title">이벤트 메타 정보</h3>
               <div className={styles.measurementBox}>
                 <div>
-                  <span>예측 발전량</span>
-                  <strong className={styles.blue}>76.5 kW</strong>
+                  <span>이벤트 유형</span>
+                  <strong className={styles.blue}>{event?.type ?? '-'}</strong>
                 </div>
                 <div>
-                  <span>실제 발전량</span>
-                  <strong className={styles.red}>55.1 kW</strong>
+                  <span>심각도</span>
+                  <strong className={styles[severityTone]}>{event?.severity ?? '-'}</strong>
                 </div>
-                <b>▼ 28%</b>
+                <b>{event?.status ?? '-'}</b>
               </div>
             </section>
 
             <section className={styles.sectionBlock} aria-labelledby="cause-title">
               <h3 id="cause-title">원인 분석</h3>
               <div className={[styles.insightBox, styles.causeBox].join(' ')}>
-                일사량 대비 실제 출력이 낮아 패널 오염 또는 음영 가능성이 높습니다. 인버터 연결 상태도 함께 점검하세요.
+                {getFallbackText(event?.cause, '아직 등록된 원인 분석 내용이 없습니다.')}
               </div>
             </section>
 
             <section className={styles.sectionBlock} aria-labelledby="xai-title">
               <h3 id="xai-title">XAI 판단 근거</h3>
               <div className={[styles.insightBox, styles.xaiBox].join(' ')}>
-                <p>일사량은 정상 범위였지만 출력만 급감해 설비 이상 가능성이 높습니다.</p>
-                <div className={styles.metricList}>
-                  {evidenceMetrics.map((metric) => (
-                    <div key={metric.label} className={styles.metricRow}>
-                      <span>{metric.label}</span>
-                      <div>
-                        <i className={styles[metric.tone]} style={{ width: metric.size }} />
-                      </div>
-                      <b className={styles[metric.tone]}>{metric.value}</b>
-                    </div>
-                  ))}
-                </div>
+                <p>{getFallbackText(event?.xaiExplanation, '아직 등록된 XAI 판단 근거가 없습니다.')}</p>
               </div>
             </section>
 
@@ -116,9 +287,9 @@ export function AnomalyDetailPage() {
               <h3 id="action-title">권장 조치</h3>
               <div className={[styles.insightBox, styles.actionBox].join(' ')}>
                 <ol>
-                  <li>패널 표면 오염 여부 육안 점검</li>
-                  <li>인버터 연결 및 출력 로그 확인</li>
-                  <li>주변 음영 발생 요소 점검</li>
+                  {recommendedActions.map((action) => (
+                    <li key={action}>{action}</li>
+                  ))}
                 </ol>
               </div>
             </section>
@@ -145,13 +316,13 @@ export function AnomalyDetailPage() {
               <span className={styles.aiAvatar}>AI</span>
               <div>
                 <h2 id="ai-chat-title">AI 원인 설명 챗</h2>
-                <p>이상 이벤트 #9001 · XAI 기반 분석</p>
+                <p>{event ? `이상 이벤트 #${event.eventId} · XAI 기반 분석` : '이벤트 선택 필요'}</p>
               </div>
-              <span className={styles.chatSeverity}><i />HIGH</span>
+              <span className={[styles.chatSeverity, styles[severityTone]].join(' ')}><i />{event?.severity ?? '-'}</span>
             </header>
 
             <div className={styles.chatBody}>
-              {messages.map((message, index) => (
+              {aiMessages.map((message, index) => (
                 <article key={`${message.type}-${index}`} className={styles[`${message.type}Message`]}>
                   {message.type === 'ai' ? <span className={styles.messageAvatar}>AI</span> : null}
                   <div>
@@ -170,17 +341,17 @@ export function AnomalyDetailPage() {
               </div>
 
               <div className={styles.relatedArea}>
-                <h3>📊 관련 데이터</h3>
+                <h3>관련 데이터</h3>
                 <div className={styles.relatedGrid}>
                   <article className={styles.powerCard}>
-                    <span>⚡ 현재 발전량</span>
-                    <strong>55.1 kW</strong>
-                    <small>-28%</small>
+                    <span>이벤트 유형</span>
+                    <strong>{event?.type ?? '-'}</strong>
+                    <small>{event ? `#${event.eventId}` : '-'}</small>
                   </article>
                   <article className={styles.solarCard}>
-                    <span>☀ 일사량</span>
-                    <strong>710 W/m²</strong>
-                    <small>정상</small>
+                    <span>처리 상태</span>
+                    <strong>{event?.status ?? '-'}</strong>
+                    <small>{event?.severity ?? '-'}</small>
                   </article>
                 </div>
               </div>

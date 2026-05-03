@@ -1,5 +1,5 @@
 export { apiClient } from './client'
-export { getForecast, getMeasurements } from './dashboard'
+export { getAnomalies, getAnomalyDetail, getDashboardSummary, getForecast, getMeasurements, getPlants, updateAnomalyStatus } from './dashboard'
 export { login, saveAuthSession, signup } from './auth'
-export type { ForecastPoint, ForecastResponse, MeasurementPoint, MeasurementSeries } from './dashboard'
+export type { AnomalyEvent, DashboardSummary, ForecastPoint, ForecastResponse, MeasurementPoint, MeasurementSeries, Plant, UpdateAnomalyStatusResponse } from './dashboard'
 export type { LoginRequest, LoginResponse, SignupRequest, UserResponse } from './auth'

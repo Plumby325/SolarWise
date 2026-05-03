@@ -288,22 +288,7 @@ export function SignupPage() {
                 {isSubmitting ? '가입 중...' : '무료로 시작하기 →'}
               </button>
             </form>
-
-            <div className={styles.divider} aria-hidden="true">
-              <span />
-              <p>또는 소셜 계정으로 시작하기</p>
-              <span />
-            </div>
-
-            <div className={styles.socialActions}>
-              <button type="button" className={styles.googleButton} onClick={handleSocialStart}>
-                G&nbsp;&nbsp;Google로 시작하기
-              </button>
-              <button type="button" className={styles.kakaoButton} onClick={handleSocialStart}>
-                카카오로 시작하기
-              </button>
-            </div>
-
+            
             <p className={styles.loginRow}>
               <span>이미 계정이 있으신가요?</span>
               <Link to="/login">로그인하기 →</Link>

@@ -1,17 +1,20 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { getAnomalies, getPlants } from '@/api'
+import { DashboardSettingsMenu } from './DashboardSettingsMenu'
 import styles from './DashboardSidebar.module.css'
 
-type SidebarSection = 'dashboard' | 'anomaly'
+type SidebarSection = 'dashboard' | 'anomaly' | 'forecast'
 
 type DashboardSidebarProps = {
   activeSection: SidebarSection
 }
 
 const navItems = [
-  { id: 'dashboard', label: '대시보드', icon: '⊞', to: '/dashboard', badge: '' },
-  { id: 'anomaly', label: '이상 감지', icon: '⚠', to: '/anomaly-detection', badge: '1' },
-  { id: 'forecast', label: '발전량 예측', icon: '↗', to: '#forecast', badge: '' },
-  { id: 'notifications', label: '알림 설정', icon: '🔔', to: '#notifications', badge: '' },
+  { id: 'dashboard', label: '대시보드', icon: '⊞', to: '/dashboard' },
+  { id: 'anomaly', label: '이상 감지', icon: '⚠', to: '/anomaly-detection' },
+  { id: 'forecast', label: '발전량 예측', icon: '↗', to: '/power-forecast' },
+  { id: 'notifications', label: '알림 설정', icon: '🔔', to: '#notifications' },
 ] as const
 
 function getStoredUserName() {
@@ -36,6 +39,44 @@ function getStoredUserName() {
 export function DashboardSidebar({ activeSection }: DashboardSidebarProps) {
   const currentUserName = getStoredUserName()
   const currentUserInitial = currentUserName.charAt(0)
+  const [openAnomalyCount, setOpenAnomalyCount] = useState(0)
+
+  useEffect(() => {
+    let isActive = true
+
+    const fetchOpenAnomalyCount = async () => {
+      try {
+        const plantResponse = await getPlants()
+        const plantId = plantResponse.data[0]?.plantId
+
+        if (!plantId) {
+          if (isActive) {
+            setOpenAnomalyCount(0)
+          }
+          return
+        }
+
+        const anomalyResponse = await getAnomalies(plantId, 50)
+        const nextOpenCount = anomalyResponse.data.filter((anomaly) => anomaly.status === 'OPEN').length
+
+        if (isActive) {
+          setOpenAnomalyCount(nextOpenCount)
+        }
+      } catch {
+        if (isActive) {
+          setOpenAnomalyCount(0)
+        }
+      }
+    }
+
+    fetchOpenAnomalyCount()
+    const pollingTimer = window.setInterval(fetchOpenAnomalyCount, 5000)
+
+    return () => {
+      isActive = false
+      window.clearInterval(pollingTimer)
+    }
+  }, [])
 
   return (
     <aside className={styles.sidebar} aria-label="대시보드 사이드바">
@@ -57,10 +98,12 @@ export function DashboardSidebar({ activeSection }: DashboardSidebarProps) {
       <nav className={styles.navMenu} aria-label="대시보드 메뉴">
         {navItems.map((item) => {
           const isActive = item.id === activeSection
+          const badge = item.id === 'anomaly' && openAnomalyCount > 0 ? String(openAnomalyCount) : ''
           const className = [
             styles.navItem,
             isActive ? styles.navItemActive : '',
-            isActive && activeSection === 'anomaly' ? styles.navItemActiveRed : '',
+            isActive && activeSection === 'anomaly' && openAnomalyCount > 0 ? styles.navItemActiveRed : '',
+            item.id === 'anomaly' && openAnomalyCount > 0 ? styles.navItemAlert : '',
           ]
             .filter(Boolean)
             .join(' ')
@@ -69,7 +112,7 @@ export function DashboardSidebar({ activeSection }: DashboardSidebarProps) {
             <Link key={item.id} className={className} to={item.to}>
               <span className={styles.navIcon}>{item.icon}</span>
               <span>{item.label}</span>
-              {item.badge ? <strong className={styles.navBadge}>{item.badge}</strong> : null}
+              {badge ? <strong className={styles.navBadge}>{badge}</strong> : null}
             </Link>
           ) : (
             <a key={item.id} className={className} href={item.to}>
@@ -86,9 +129,7 @@ export function DashboardSidebar({ activeSection }: DashboardSidebarProps) {
           <strong>{currentUserName}</strong>
           <small>발전소 관리자</small>
         </span>
-        <button className={styles.profileButton} type="button" aria-label="설정">
-          ⚙
-        </button>
+        <DashboardSettingsMenu placement="right-end" variant="sidebar" />
       </section>
     </aside>
   )

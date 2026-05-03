@@ -1,69 +1,334 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { getAnomalies, getPlants, updateAnomalyStatus } from '@/api'
+import type { AnomalyEvent } from '@/api'
 import { DashboardSidebar } from '@/shared/layout/DashboardSidebar'
 import styles from './AnomalyDetectionMainPage.module.css'
 
-const summaryCards = [
-  { label: '전체', value: '12', tone: 'dark' },
-  { label: 'OPEN', value: '5', tone: 'red' },
-  { label: 'HIGH', value: '2', tone: 'redSoft' },
-  { label: 'MEDIUM', value: '3', tone: 'amber' },
+const typeFilterOptions = ['POWER', 'VISION'] as const
+const severityFilterOptions = ['HIGH', 'MEDIUM', 'LOW'] as const
+const statusFilterOptions = ['OPEN', 'ACKNOWLEDGED', 'RESOLVED'] as const
+const sortOptions = [
+  { id: 'latest', label: '최신순' },
+  { id: 'type', label: '유형순' },
+  { id: 'severity', label: '심각도순' },
 ] as const
+const fallbackEventPageSize = 5
+const estimatedEventCardHeight = 88
 
-const events = [
-  {
-    severity: 'HIGH',
-    type: 'POWER',
-    title: '예상 대비 발전량 28% 감소',
-    time: '오늘 13:40',
-    status: 'OPEN',
-    tone: 'red',
-    selected: true,
-  },
-  {
-    severity: 'MEDIUM',
-    type: 'VISION',
-    title: '패널 표면 오염 의심',
-    time: '오늘 13:50',
-    status: 'OPEN',
-    tone: 'amber',
-    selected: false,
-  },
-  {
-    severity: 'LOW',
-    type: 'POWER',
-    title: '발전 효율 5% 소폭 감소',
-    time: '어제 16:20',
-    status: 'ACKNOWLEDGED',
-    tone: 'blue',
-    selected: false,
-  },
-  {
-    severity: 'HIGH',
-    type: 'VISION',
-    title: '패널 크랙 감지 (영암 3구역)',
-    time: '2일 전 09:10',
-    status: 'RESOLVED',
-    tone: 'muted',
-    selected: false,
-  },
-  {
-    severity: 'MEDIUM',
-    type: 'POWER',
-    title: '인버터 연결 불안정',
-    time: '3일 전 11:30',
-    status: 'RESOLVED',
-    tone: 'muted',
-    selected: false,
-  },
-] as const
+type TypeFilter = (typeof typeFilterOptions)[number]
+type SeverityFilter = (typeof severityFilterOptions)[number]
+type StatusFilter = (typeof statusFilterOptions)[number]
+type FilterMenu = 'type' | 'severity' | 'status' | null
+type SortOptionId = (typeof sortOptions)[number]['id']
 
-const evidenceMetrics = [
-  { label: '출력 저하율', value: '70%', size: '70%', tone: 'red' },
-  { label: '일사량 편차', value: '45%', size: '45%', tone: 'amber' },
-  { label: '패널 표면 상태', value: '28%', size: '28%', tone: 'blue' },
-] as const
+const typeOrder: Record<string, number> = {
+  POWER: 0,
+  VISION: 1,
+}
+
+const severityOrder: Record<string, number> = {
+  HIGH: 0,
+  MEDIUM: 1,
+  LOW: 2,
+}
+
+function getEventTone(event: AnomalyEvent) {
+  if (event.status === 'RESOLVED') {
+    return 'muted'
+  }
+
+  if (event.severity === 'HIGH') {
+    return 'red'
+  }
+
+  if (event.severity === 'MEDIUM') {
+    return 'amber'
+  }
+
+  return 'blue'
+}
+
+function formatDetectedAt(value: string) {
+  return new Intl.DateTimeFormat('ko-KR', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(value))
+}
+
+function getFallbackText(value: string | null | undefined, fallback: string) {
+  return value?.trim() ? value : fallback
+}
+
+function getFilterLabel(selectedValues: readonly string[]) {
+  if (selectedValues.length === 0) {
+    return '전체'
+  }
+
+  if (selectedValues.length === 1) {
+    return selectedValues[0]
+  }
+
+  return `${selectedValues[0]} 외 ${selectedValues.length - 1}`
+}
+
+function toggleFilterValue<T extends string>(selectedValues: T[], value: T) {
+  return selectedValues.includes(value)
+    ? selectedValues.filter((selectedValue) => selectedValue !== value)
+    : [...selectedValues, value]
+}
 
 export function AnomalyDetectionMainPage() {
+  const eventListRef = useRef<HTMLDivElement | null>(null)
+  const [plantId, setPlantId] = useState<number | null>(null)
+  const [events, setEvents] = useState<AnomalyEvent[]>([])
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState('')
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [openFilterMenu, setOpenFilterMenu] = useState<FilterMenu>(null)
+  const [selectedTypes, setSelectedTypes] = useState<TypeFilter[]>([])
+  const [selectedSeverities, setSelectedSeverities] = useState<SeverityFilter[]>([])
+  const [selectedStatuses, setSelectedStatuses] = useState<StatusFilter[]>([])
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false)
+  const [sortOption, setSortOption] = useState<SortOptionId>('latest')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [eventPageSize, setEventPageSize] = useState(fallbackEventPageSize)
+
+  const filteredEvents = useMemo(
+    () =>
+      events.filter((event) => {
+        const matchesType = selectedTypes.length === 0 || selectedTypes.includes(event.type as TypeFilter)
+        const matchesSeverity = selectedSeverities.length === 0 || selectedSeverities.includes(event.severity as SeverityFilter)
+        const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(event.status as StatusFilter)
+
+        return matchesType && matchesSeverity && matchesStatus
+      }),
+    [events, selectedSeverities, selectedStatuses, selectedTypes],
+  )
+
+  const sortedEvents = useMemo(() => {
+    return [...filteredEvents].sort((a, b) => {
+      if (sortOption === 'type') {
+        const typeDiff = (typeOrder[a.type] ?? 99) - (typeOrder[b.type] ?? 99)
+        return typeDiff || new Date(b.detectedAt).getTime() - new Date(a.detectedAt).getTime()
+      }
+
+      if (sortOption === 'severity') {
+        const severityDiff = (severityOrder[a.severity] ?? 99) - (severityOrder[b.severity] ?? 99)
+        return severityDiff || new Date(b.detectedAt).getTime() - new Date(a.detectedAt).getTime()
+      }
+
+      return new Date(b.detectedAt).getTime() - new Date(a.detectedAt).getTime()
+    })
+  }, [filteredEvents, sortOption])
+
+  const totalPages = Math.max(1, Math.ceil(sortedEvents.length / eventPageSize))
+  const paginatedEvents = useMemo(() => {
+    const startIndex = (currentPage - 1) * eventPageSize
+    return sortedEvents.slice(startIndex, startIndex + eventPageSize)
+  }, [currentPage, sortedEvents])
+  const pageNumbers = useMemo(
+    () => Array.from({ length: totalPages }, (_, index) => index + 1),
+    [totalPages],
+  )
+
+  const selectedEvent = useMemo(
+    () => paginatedEvents.find((event) => event.eventId === selectedEventId) ?? paginatedEvents[0] ?? null,
+    [paginatedEvents, selectedEventId],
+  )
+
+  const summaryCards = useMemo(() => {
+    const highCount = events.filter((event) => event.severity === 'HIGH').length
+    const mediumCount = events.filter((event) => event.severity === 'MEDIUM').length
+    const lowCount = events.filter((event) => event.severity === 'LOW').length
+
+    return [
+      { label: '전체', value: String(events.length), tone: 'dark' },
+      { label: 'HIGH', value: String(highCount), tone: 'redSoft' },
+      { label: 'MEDIUM', value: String(mediumCount), tone: 'amber' },
+      { label: 'LOW', value: String(lowCount), tone: 'blue' },
+    ] as const
+  }, [events])
+
+  useEffect(() => {
+    let isActive = true
+
+    getPlants()
+      .then((response) => {
+        if (!isActive) {
+          return
+        }
+
+        const firstPlantId = response.data[0]?.plantId ?? null
+        setPlantId(firstPlantId)
+
+        if (!firstPlantId) {
+          setErrorMessage('조회 가능한 발전소가 없습니다.')
+          setIsLoading(false)
+        }
+      })
+      .catch((error) => {
+        if (!isActive) {
+          return
+        }
+
+        setErrorMessage(error instanceof Error ? error.message : '발전소 목록을 불러오지 못했습니다.')
+        setIsLoading(false)
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!plantId) {
+      return
+    }
+
+    let isActive = true
+
+    const fetchEvents = () => {
+      getAnomalies(plantId, 1000)
+        .then((response) => {
+          if (!isActive) {
+            return
+          }
+
+          setEvents(response.data)
+          setSelectedEventId((currentId) => {
+            if (currentId && response.data.some((event) => event.eventId === currentId)) {
+              return currentId
+            }
+
+            return response.data[0]?.eventId ?? null
+          })
+          setErrorMessage('')
+          setIsLoading(false)
+        })
+        .catch((error) => {
+          if (!isActive) {
+            return
+          }
+
+          setErrorMessage(error instanceof Error ? error.message : '이상 이벤트 목록을 불러오지 못했습니다.')
+          setIsLoading(false)
+        })
+    }
+
+    fetchEvents()
+    const pollingTimer = window.setInterval(fetchEvents, 5000)
+
+    return () => {
+      isActive = false
+      window.clearInterval(pollingTimer)
+    }
+  }, [plantId])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [selectedSeverities, selectedStatuses, selectedTypes, sortOption])
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages))
+  }, [totalPages])
+
+  useEffect(() => {
+    const eventListElement = eventListRef.current
+
+    if (!eventListElement) {
+      return
+    }
+
+    const updatePageSize = () => {
+      const nextPageSize = Math.max(1, Math.floor((eventListElement.clientHeight + 8) / estimatedEventCardHeight))
+      setEventPageSize(nextPageSize)
+    }
+
+    updatePageSize()
+
+    const resizeObserver = new ResizeObserver(updatePageSize)
+    resizeObserver.observe(eventListElement)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [])
+
+  const handleAcknowledge = () => {
+    if (!plantId || !selectedEvent || selectedEvent.status === 'ACKNOWLEDGED' || selectedEvent.status === 'RESOLVED') {
+      return
+    }
+
+    setIsUpdating(true)
+    setErrorMessage('')
+
+    updateAnomalyStatus(plantId, selectedEvent.eventId, 'ACKNOWLEDGED')
+      .then((response) => {
+        setEvents((currentEvents) =>
+          currentEvents.map((event) =>
+            event.eventId === response.data.eventId ? { ...event, status: response.data.status } : event,
+          ),
+        )
+      })
+      .catch((error) => {
+        setErrorMessage(error instanceof Error ? error.message : '확인 완료 처리에 실패했습니다.')
+      })
+      .finally(() => {
+        setIsUpdating(false)
+      })
+  }
+
+  const selectedSortLabel = sortOptions.find((option) => option.id === sortOption)?.label ?? '최신순'
+
+  const renderFilterMenu = <T extends string,>(
+    id: Exclude<FilterMenu, null>,
+    label: string,
+    selectedValues: T[],
+    options: readonly T[],
+    onChange: (nextValues: T[]) => void,
+  ) => (
+    <div className={styles.filterGroup}>
+      <button
+        className={styles.filterTrigger}
+        type="button"
+        aria-expanded={openFilterMenu === id}
+        onClick={() => setOpenFilterMenu((currentMenu) => (currentMenu === id ? null : id))}
+      >
+        <span>{label}</span>
+        {getFilterLabel(selectedValues)} ▾
+      </button>
+
+      {openFilterMenu === id ? (
+        <div className={styles.filterDropdown}>
+          <button
+            className={[styles.filterOption, selectedValues.length === 0 ? styles.filterOptionSelected : ''].filter(Boolean).join(' ')}
+            type="button"
+            onClick={() => onChange([])}
+          >
+            <span>{selectedValues.length === 0 ? '✓' : ''}</span>
+            전체
+          </button>
+          {options.map((option) => (
+            <button
+              key={option}
+              className={[styles.filterOption, selectedValues.includes(option) ? styles.filterOptionSelected : ''].filter(Boolean).join(' ')}
+              type="button"
+              onClick={() => onChange(toggleFilterValue(selectedValues, option))}
+            >
+              <span>{selectedValues.includes(option) ? '✓' : ''}</span>
+              {option}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+
   return (
     <div className={styles.page}>
       <DashboardSidebar activeSection="anomaly" />
@@ -76,18 +341,9 @@ export function AnomalyDetectionMainPage() {
           </div>
 
           <div className={styles.filters} aria-label="이벤트 필터">
-            <button type="button">
-              <span>유형</span>
-              전체 ▾
-            </button>
-            <button type="button">
-              <span>심각도</span>
-              전체 ▾
-            </button>
-            <button className={styles.openFilter} type="button">
-              <span>상태</span>
-              OPEN ▾
-            </button>
+            {renderFilterMenu('type', '유형', selectedTypes, typeFilterOptions, setSelectedTypes)}
+            {renderFilterMenu('severity', '심각도', selectedSeverities, severityFilterOptions, setSelectedSeverities)}
+            {renderFilterMenu('status', '상태', selectedStatuses, statusFilterOptions, setSelectedStatuses)}
           </div>
         </header>
 
@@ -105,71 +361,141 @@ export function AnomalyDetectionMainPage() {
             <div className={styles.panelHeader}>
               <div>
                 <h2 id="event-list-title">이벤트 목록</h2>
-                <p>최신순</p>
+                <p>{selectedSortLabel} · {sortedEvents.length}건 표시</p>
               </div>
-              <button type="button">최신순 ▾</button>
+              <div className={styles.sortGroup}>
+                <button
+                  type="button"
+                  aria-expanded={isSortMenuOpen}
+                  onClick={() => setIsSortMenuOpen((isOpen) => !isOpen)}
+                >
+                  {selectedSortLabel} ▾
+                </button>
+
+                {isSortMenuOpen ? (
+                  <div className={styles.sortDropdown}>
+                    {sortOptions.map((option) => (
+                      <button
+                        key={option.id}
+                        className={option.id === sortOption ? styles.sortOptionSelected : ''}
+                        type="button"
+                        onClick={() => {
+                          setSortOption(option.id)
+                          setIsSortMenuOpen(false)
+                        }}
+                      >
+                        <span>{option.id === sortOption ? '✓' : ''}</span>
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             </div>
 
-            <div className={styles.events}>
-              {events.map((event) => (
-                <article key={`${event.title}-${event.time}`} className={[styles.eventItem, styles[event.tone], event.selected ? styles.eventSelected : ''].filter(Boolean).join(' ')}>
+            <div ref={eventListRef} className={styles.events}>
+              {isLoading ? <p className={styles.emptyState}>이상 이벤트를 불러오는 중입니다.</p> : null}
+              {!isLoading && events.length === 0 ? <p className={styles.emptyState}>등록된 이상 이벤트가 없습니다.</p> : null}
+              {!isLoading && events.length > 0 && sortedEvents.length === 0 ? <p className={styles.emptyState}>선택한 필터에 해당하는 이벤트가 없습니다.</p> : null}
+              {paginatedEvents.map((event) => (
+                <button
+                  key={event.eventId}
+                  type="button"
+                  className={[styles.eventItem, styles[getEventTone(event)], selectedEvent?.eventId === event.eventId ? styles.eventSelected : ''].filter(Boolean).join(' ')}
+                  onClick={() => setSelectedEventId(event.eventId)}
+                >
                   <div className={styles.eventTags}>
                     <span>{event.severity}</span>
                     <small>{event.type}</small>
                   </div>
-                  <h3>{event.title}</h3>
-                  <time>{event.time}</time>
+                  <h3>{event.summary}</h3>
+                  <time>{formatDetectedAt(event.detectedAt)}</time>
                   <b className={styles[`status${event.status}`]}>{event.status}</b>
-                </article>
+                </button>
               ))}
             </div>
+
+            {totalPages > 1 ? (
+              <nav className={styles.pagination} aria-label="이벤트 목록 페이지">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                >
+                  &lt;
+                </button>
+                {pageNumbers.map((pageNumber) => (
+                  <button
+                    key={pageNumber}
+                    className={pageNumber === currentPage ? styles.paginationActive : ''}
+                    type="button"
+                    aria-current={pageNumber === currentPage ? 'page' : undefined}
+                    onClick={() => setCurrentPage(pageNumber)}
+                  >
+                    {pageNumber}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                >
+                  &gt;
+                </button>
+              </nav>
+            ) : null}
           </section>
 
           <section className={styles.detailPanel} aria-labelledby="event-detail-title">
-            <div className={styles.detailHero}>
-              <div className={styles.eventTags}>
-                <span>HIGH</span>
-                <small>POWER</small>
-              </div>
-              <time>오늘 13:40</time>
-              <strong>OPEN</strong>
-              <h2 id="event-detail-title">예상 대비 발전량 28% 감소</h2>
-            </div>
-
-            <div className={styles.detailBody}>
-              <h3>원인 분석</h3>
-              <div className={[styles.insightBox, styles.causeBox].join(' ')}>
-                일사량 대비 실제 출력이 낮아 패널 오염 또는 음영 가능성이 높습니다.
-              </div>
-
-              <h3>XAI 판단 근거</h3>
-              <div className={[styles.insightBox, styles.xaiBox].join(' ')}>
-                <p>일사량은 정상 범위였지만 출력만 급감해 설비 이상 가능성이 높습니다.</p>
-                <div className={styles.metricList}>
-                  {evidenceMetrics.map((metric) => (
-                    <div key={metric.label} className={styles.metricRow}>
-                      <span>{metric.label}</span>
-                      <div>
-                        <i className={styles[metric.tone]} style={{ width: metric.size }} />
-                      </div>
-                      <b className={styles[metric.tone]}>{metric.value}</b>
-                    </div>
-                  ))}
+            {selectedEvent ? (
+              <>
+                <div className={styles.detailHero}>
+                  <div className={styles.eventTags}>
+                    <span>{selectedEvent.severity}</span>
+                    <small>{selectedEvent.type}</small>
+                  </div>
+                  <time>{formatDetectedAt(selectedEvent.detectedAt)}</time>
+                  <strong className={styles[`status${selectedEvent.status}`]}>{selectedEvent.status}</strong>
+                  <h2 id="event-detail-title">{selectedEvent.summary}</h2>
                 </div>
-              </div>
 
-              <h3>권장 조치</h3>
-              <div className={[styles.insightBox, styles.actionBox].join(' ')}>
-                패널 표면 오염 여부와 주변 음영 발생 요소를 우선 점검하세요.
-              </div>
+                <div className={styles.detailBody}>
+                  <h3>원인 분석</h3>
+                  <div className={[styles.insightBox, styles.causeBox].join(' ')}>
+                    {getFallbackText(selectedEvent.cause, '아직 등록된 원인 분석 내용이 없습니다.')}
+                  </div>
 
-              <div className={styles.detailActions}>
-                <button type="button">✓ 확인 완료 처리</button>
-                <Link to="/anomaly-detection/detail">상세 보기 →</Link>
-              </div>
+                  <h3>XAI 판단 근거</h3>
+                  <div className={[styles.insightBox, styles.xaiBox].join(' ')}>
+                    <p>{getFallbackText(selectedEvent.xaiExplanation, '아직 등록된 XAI 판단 근거가 없습니다.')}</p>
+                  </div>
 
-              <p className={styles.aiNote}>💬 AI 원인 설명 챗 포함 — 상세 화면에서 AI에게 직접 질문하세요</p>
-            </div>
+                  <h3>권장 조치</h3>
+                  <div className={[styles.insightBox, styles.actionBox].join(' ')}>
+                    {getFallbackText(selectedEvent.recommendedAction, '담당자가 이벤트를 확인한 뒤 조치 내용을 등록하세요.')}
+                  </div>
+
+                  <div className={styles.detailActions}>
+                    <button
+                      type="button"
+                      onClick={handleAcknowledge}
+                      disabled={isUpdating || selectedEvent.status === 'ACKNOWLEDGED' || selectedEvent.status === 'RESOLVED'}
+                    >
+                      {selectedEvent.status === 'ACKNOWLEDGED' || selectedEvent.status === 'RESOLVED' ? '✓ 확인 완료됨' : '✓ 확인 완료 처리'}
+                    </button>
+                    <Link to={`/anomaly-detection/detail?eventId=${selectedEvent.eventId}`}>상세 보기 →</Link>
+                  </div>
+
+                  {errorMessage ? <p className={styles.errorText}>{errorMessage}</p> : null}
+                  <p className={styles.aiNote}>AI 원인 설명 챗 포함 - 상세 화면에서 AI에게 직접 질문하세요</p>
+                </div>
+              </>
+            ) : (
+              <div className={styles.emptyDetail}>
+                <h2 id="event-detail-title">선택된 이벤트가 없습니다.</h2>
+                <p>{errorMessage || '이벤트가 등록되면 우측 카드에서 내용을 확인할 수 있습니다.'}</p>
+              </div>
+            )}
           </section>
         </div>
       </main>

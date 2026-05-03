@@ -5,19 +5,19 @@ import styles from './AboutPage.module.css'
 
 const valueCards = [
   {
-    icon: '🔮',
+    icon: '◉',
     title: 'AI 예지 정비',
     description: ['고장 발생 전 징후를 사전에', '포착하여 피해를 막습니다.'],
     tone: 'blue',
   },
   {
-    icon: '🧠',
+    icon: '◈',
     title: '투명한 XAI',
     description: ['AI가 왜 그런 판단을 내렸는지', '사용자 언어로 설명합니다.'],
     tone: 'green',
   },
   {
-    icon: '👤',
+    icon: '◇',
     title: '비전문가 친화',
     description: ['소규모 발전소 운영자도', '쉽게 사용할 수 있습니다.'],
     tone: 'orange',
@@ -26,12 +26,17 @@ const valueCards = [
 
 const teamMembers = [
   { name: '윤의규', major: '컴퓨터공학', role: 'Frontend', tone: 'blue' },
-  { name: '황민지', major: '인공지능', role: 'AI', tone: 'green' },
   { name: '이강민', major: '컴퓨터공학', role: 'Frontend', tone: 'blue' },
-  { name: '이승윤', major: '컴퓨터공학', role: 'Backend', tone: 'orange' },
   { name: '강지은', major: '응용통계학', role: 'Frontend', tone: 'blue' },
+  { name: '이승윤', major: '컴퓨터공학', role: 'Backend', tone: 'orange' },
   { name: '박채리', major: 'SW안전보안', role: 'Backend', tone: 'orange' },
+  { name: '황민지', major: '인공지능', role: 'AI', tone: 'green' },
   { name: '윤소윤', major: '인공지능', role: 'AI', tone: 'green' },
+] as const
+
+const teamRows = [
+  teamMembers.filter((member) => member.role === 'Frontend'),
+  teamMembers.filter((member) => member.role !== 'Frontend'),
 ] as const
 
 const problemItems = [
@@ -55,9 +60,9 @@ const backgroundStats = [
 ] as const
 
 const techStacks = [
-  { title: 'Frontend', icon: '⚛', tone: 'blue', items: ['React', 'Figma'] },
-  { title: 'Backend', icon: '🍃', tone: 'green', items: ['Spring Boot', 'MySQL'] },
-  { title: 'AI', icon: '🤖', tone: 'orange', items: ['PyTorch', 'OpenCV', 'XAI'] },
+  { title: 'Frontend', icon: '⬡', tone: 'blue', items: ['React', 'Figma'] },
+  { title: 'Backend', icon: '◆', tone: 'green', items: ['Spring Boot', 'MySQL'] },
+  { title: 'AI', icon: '★', tone: 'orange', items: ['PyTorch', 'OpenCV', 'XAI'] },
 ] as const
 
 const heroMeta = [
@@ -155,41 +160,45 @@ export function AboutPage() {
             </div>
 
             <div className={styles.teamGrid}>
-              {teamMembers.map((member) => (
-                <article
-                  key={member.name}
-                  className={[
-                    styles.memberCard,
-                    member.tone === 'green' ? styles.memberCardGreen : '',
-                    member.tone === 'orange' ? styles.memberCardOrange : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                >
-                  <div
-                    className={[
-                      styles.avatar,
-                      member.tone === 'green' ? styles.avatarGreen : '',
-                      member.tone === 'orange' ? styles.avatarOrange : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                    aria-hidden="true"
-                  />
-                  <h3>{member.name}</h3>
-                  <p>{member.major}</p>
-                  <span
-                    className={[
-                      styles.roleBadge,
-                      member.tone === 'green' ? styles.roleBadgeGreen : '',
-                      member.tone === 'orange' ? styles.roleBadgeOrange : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                  >
-                    {member.role}
-                  </span>
-                </article>
+              {teamRows.map((row, rowIndex) => (
+                <div key={rowIndex === 0 ? 'frontend' : 'backend-ai'} className={styles.teamRow}>
+                  {row.map((member) => (
+                    <article
+                      key={member.name}
+                      className={[
+                        styles.memberCard,
+                        member.tone === 'green' ? styles.memberCardGreen : '',
+                        member.tone === 'orange' ? styles.memberCardOrange : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                    >
+                      <div
+                        className={[
+                          styles.avatar,
+                          member.tone === 'green' ? styles.avatarGreen : '',
+                          member.tone === 'orange' ? styles.avatarOrange : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                        aria-hidden="true"
+                      />
+                      <h3>{member.name}</h3>
+                      <p>{member.major}</p>
+                      <span
+                        className={[
+                          styles.roleBadge,
+                          member.tone === 'green' ? styles.roleBadgeGreen : '',
+                          member.tone === 'orange' ? styles.roleBadgeOrange : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                      >
+                        {member.role}
+                      </span>
+                    </article>
+                  ))}
+                </div>
               ))}
             </div>
           </div>

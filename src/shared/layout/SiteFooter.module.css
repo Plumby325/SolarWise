@@ -5,9 +5,8 @@
 
 .footer {
   min-height: 280px;
-  padding: 0 0 28px;
   color: #dbe7f1;
-  border-top: 1px solid #1a2e40;
+  border-top: 1px solid #243850;
   background: #0d1b2a;
 }
 
@@ -15,7 +14,7 @@
   display: grid;
   grid-template-columns: 416px minmax(0, 1fr);
   gap: 24px;
-  padding: 52px 0 68px;
+  padding: 52px 0 73px;
 }
 
 .footerLogo {
@@ -40,12 +39,19 @@
 }
 
 .footerBrand p,
-.footerMeta p,
 .footerLinks li {
   margin: 10px 0 0;
-  color: #3a5f7a;
+  color: #8bafc8;
   font-size: 12px;
   line-height: 1.6;
+}
+
+.footerMeta p,
+.socialLinks {
+  margin: 0;
+  color: #6a9abd;
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .footerForm {
@@ -62,12 +68,12 @@
   border-radius: 8px;
   color: #dbe7f1;
   font: inherit;
-  background: #1a2e40;
+  background: #243850;
   outline: none;
 }
 
 .footerInput::placeholder {
-  color: #2a4a6a;
+  color: #6a9abd;
 }
 
 .footerInput:focus {
@@ -84,7 +90,7 @@
   border-radius: 8px;
   color: #ffffff;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   background: #185fa5;
   transition:
     transform 0.15s ease,
@@ -107,6 +113,7 @@
   margin: 0;
   color: #85b7eb;
   font-size: 12px;
+  font-weight: 600;
 }
 
 .footerLinks ul {
@@ -118,9 +125,14 @@
 .footerMeta {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 16px;
   padding-top: 16px;
-  border-top: 1px solid #1a2e40;
+  border-top: 1px solid #243850;
+}
+
+.socialLinks {
+  white-space: nowrap;
 }
 
 @media (max-width: 1180px) {
