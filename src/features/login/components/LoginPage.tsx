@@ -78,10 +78,6 @@ export function LoginPage() {
     }
   }
 
-  const handleSocialLogin = () => {
-    navigate('/')
-  }
-
   return (
     <div className={styles.page}>
       <div className={styles.backgroundBlobLeft} aria-hidden="true" />

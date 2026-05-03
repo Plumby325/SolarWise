@@ -118,10 +118,6 @@ export function SignupPage() {
     }
   }
 
-  const handleSocialStart = () => {
-    navigate('/dashboard')
-  }
-
   return (
     <div className={styles.page}>
       <SiteHeader active="signup" ariaLabel="회원가입 페이지 메뉴" />
