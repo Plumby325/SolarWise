@@ -33,12 +33,12 @@
   position: absolute;
   right: 0;
   z-index: 40;
-  width: 320px;
+  width: 280px;
   overflow: hidden;
   border: 1px solid #eceae4;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #ffffff;
-  box-shadow: 0 18px 48px rgba(13, 27, 42, 0.16);
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.12);
 }
 
 .dropdownBottom {
@@ -56,21 +56,57 @@
   left: calc(100% + 12px);
 }
 
-.dropdownHeader {
+.accountHeader {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-height: 80px;
+  padding: 0 16px;
+  border-bottom: 1px solid #f0ede8;
+  background: #f8f9fa;
+}
+
+.accountAvatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: #185fa5;
+  background: rgba(24, 95, 165, 0.15);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.accountCopy {
   display: grid;
   gap: 2px;
-  padding: 14px 16px;
-  border-bottom: 1px solid #f0ede8;
+  min-width: 0;
 }
 
-.dropdownHeader strong {
+.accountCopy strong {
+  overflow: hidden;
   color: #0d1b2a;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.dropdownHeader span {
+.accountCopy small,
+.accountCopy em {
+  overflow: hidden;
   color: #888780;
   font-size: 11px;
+  font-style: normal;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accountCopy em {
+  color: #b4b2a9;
 }
 
 .menuList {
@@ -79,10 +115,11 @@
 
 .menuItem {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr);
+  grid-template-columns: 18px minmax(0, 1fr) auto;
   gap: 10px;
-  padding: 12px 16px;
-  border-bottom: 1px solid #f5f3ef;
+  align-items: center;
+  min-height: 56px;
+  padding: 0 16px;
   color: inherit;
   text-decoration: none;
 }
@@ -94,48 +131,108 @@
 .menuIcon {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: #e6f1fb;
+  width: 18px;
+  height: 18px;
+  color: #5f5e5a;
   font-size: 14px;
+  font-weight: 700;
 }
 
 .menuItem strong {
   display: block;
   color: #0d1b2a;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .menuItem small {
   display: block;
-  margin-top: 4px;
+  margin-top: 5px;
   color: #888780;
-  font-size: 10px;
-  line-height: 1.45;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.menuChevron {
+  color: #b4b2a9;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.menuDivider {
+  height: 1px;
+  background: #f0ede8;
+}
+
+.helpItem {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 52px;
+  padding: 0 16px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.helpItem:hover {
+  background: #f8f9fa;
+}
+
+.helpItem .menuIcon {
+  color: #e24b4a;
+}
+
+.helpItem strong {
+  color: #0d1b2a;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .logoutButton {
-  display: flex;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
   align-items: center;
-  justify-content: center;
   width: 100%;
-  min-height: 42px;
+  min-height: 44px;
+  padding: 0 16px;
   border: 0;
   color: #e24b4a;
   background: #fff8f8;
   cursor: pointer;
   font: inherit;
-  font-size: 12px;
-  font-weight: 700;
+  text-align: left;
+}
+
+.logoutButton span {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  font-size: 14px;
+}
+
+.logoutButton strong {
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .logoutButton:hover {
   background: #fef2f2;
 }
 
+.menuFooter {
+  display: grid;
+  place-items: center;
+  min-height: 48px;
+  border-top: 1px solid #f0ede8;
+  color: #b4b2a9;
+  font-size: 10px;
+}
+
 @media (max-width: 640px) {
   .dropdown {
-    width: min(320px, calc(100vw - 32px));
+    width: min(280px, calc(100vw - 32px));
   }
 }

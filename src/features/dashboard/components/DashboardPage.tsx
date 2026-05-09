@@ -6,6 +6,7 @@ import type { AnomalyEvent, DashboardSummary, ForecastPoint, MeasurementPoint, P
 import { DashboardSidebar } from '@/shared/layout/DashboardSidebar'
 import { DashboardSettingsMenu } from '@/shared/layout/DashboardSettingsMenu'
 import { EChart } from '@/shared/ui/EChart'
+import { formatKoreanDateTime, formatKoreanMonthDay, formatRelativeTime } from '@/shared/utils/dateFormat'
 import styles from './DashboardPage.module.css'
 
 const generationRanges = [
@@ -49,10 +50,7 @@ function formatGenerationChartTime(value: string | number, rangeId: GenerationRa
 }
 
 function formatChartDate(value: string) {
-  return new Intl.DateTimeFormat('ko-KR', {
-    month: 'numeric',
-    day: 'numeric',
-  }).format(new Date(value))
+  return formatKoreanMonthDay(value)
 }
 
 function roundChartValue(value: number) {
@@ -106,16 +104,6 @@ function createDummyForecasts(): ForecastPoint[] {
   })
 }
 
-function formatNotificationTime(value: string) {
-  return new Intl.DateTimeFormat('ko-KR', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date(value))
-}
-
 function getAnomalyTone(severity: string) {
   if (severity === 'HIGH') {
     return 'red'
@@ -126,6 +114,18 @@ function getAnomalyTone(severity: string) {
   }
 
   return 'blue'
+}
+
+function getNotificationTone(severity: string) {
+  if (severity === 'HIGH') {
+    return 'notificationHigh'
+  }
+
+  if (severity === 'MEDIUM') {
+    return 'notificationMedium'
+  }
+
+  return 'notificationLow'
 }
 
 function getAnomalyDetailPath(eventId: number) {
@@ -670,8 +670,11 @@ export function DashboardPage() {
               {isNotificationOpen ? (
                 <div className={styles.notificationDropdown} role="menu" aria-label="이상 감지 알림">
                   <header>
-                    <strong>알림</strong>
-                    <span>{hasNotifications ? `${activeAnomalies.length}건` : '새 알림 없음'}</span>
+                    <div className={styles.notificationTitle}>
+                      <strong>알림</strong>
+                      {hasNotifications ? <span>{activeAnomalies.length}</span> : null}
+                    </div>
+                    <button type="button">모두 읽음</button>
                   </header>
 
                   {notificationError ? (
@@ -681,22 +684,29 @@ export function DashboardPage() {
                       {activeAnomalies.map((anomaly) => (
                         <Link
                           key={anomaly.eventId}
-                          className={[styles.notificationItem, styles[getAnomalyTone(anomaly.severity)]].join(' ')}
+                          className={[styles.notificationItem, styles[getNotificationTone(anomaly.severity)]].join(' ')}
                           to={getAnomalyDetailPath(anomaly.eventId)}
                           role="menuitem"
                         >
-                          <span className={styles.notificationSeverity}>{anomaly.severity}</span>
-                          <div>
+                          <span className={styles.notificationDotItem} aria-hidden="true" />
+                          <div className={styles.notificationContent}>
+                            <div className={styles.notificationTags}>
+                              <span className={styles.notificationSeverity}>{anomaly.severity}</span>
+                              <span className={styles.notificationType}>{anomaly.type}</span>
+                            </div>
                             <strong>{anomaly.summary}</strong>
-                            <p>{anomaly.cause || anomaly.recommendedAction || anomaly.xaiExplanation || '이상 이벤트 상세 확인이 필요합니다.'}</p>
-                            <time>{formatNotificationTime(anomaly.detectedAt)}</time>
                           </div>
+                          <time>{formatRelativeTime(anomaly.detectedAt)}</time>
                         </Link>
                       ))}
                     </div>
                   ) : (
                     <p className={styles.notificationEmpty}>현재 확인할 이상 감지 알림이 없습니다.</p>
                   )}
+
+                  <Link className={styles.notificationFooterLink} to="/settings/notifications" role="menuitem">
+                    알림 설정 전체 보기 →
+                  </Link>
                 </div>
               ) : null}
             </div>
@@ -821,7 +831,7 @@ export function DashboardPage() {
                     <div className={styles.alertCopy}>
                       <h3>{anomaly.summary}</h3>
                       <p>{anomaly.cause || anomaly.recommendedAction || anomaly.xaiExplanation || '이상 이벤트 상세 확인이 필요합니다.'}</p>
-                      <time>{formatNotificationTime(anomaly.detectedAt)}</time>
+                      <time>{formatKoreanDateTime(anomaly.detectedAt)}</time>
                     </div>
                     <div className={styles.alertAction}>
                       <Link to={getAnomalyDetailPath(anomaly.eventId)}>확인하기</Link>

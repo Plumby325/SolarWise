@@ -7,7 +7,7 @@ import { LoginPage } from '@/features/login'
 import { PowerForecastPage } from '@/features/power-forecast'
 import { ServiceIntroductionPage } from '@/features/service-introduction'
 import { SignupPage } from '@/features/signup'
-import { SettingsPage } from '@/features/settings'
+import { NotificationSettingsPage, ProfileSettingsPage, SettingsPage } from '@/features/settings'
 import { AppLayout } from '@/shared/layout/AppLayout'
 
 export default function App() {
@@ -20,6 +20,8 @@ export default function App() {
       <Route path="/power-forecast" element={<PowerForecastPage />} />
       <Route path="/anomaly-detection" element={<AnomalyDetectionMainPage />} />
       <Route path="/anomaly-detection/detail" element={<AnomalyDetailPage />} />
+      <Route path="/settings/profile" element={<ProfileSettingsPage />} />
+      <Route path="/settings/notifications" element={<NotificationSettingsPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route element={<AppLayout />}>

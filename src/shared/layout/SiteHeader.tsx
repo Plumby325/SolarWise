@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useHideOnScroll } from '@/shared/hooks/useHideOnScroll'
+import { clearAuthSession, getAuthenticatedSessionUser, getSessionUserDisplayName } from '@/shared/utils/sessionUser'
 import styles from './SiteHeader.module.css'
 
 type ActiveNav = 'services' | 'about' | 'login' | 'signup'
@@ -10,29 +11,6 @@ type SiteHeaderProps = {
   ariaLabel?: string
 }
 
-type StoredUser = {
-  name?: unknown
-  email?: unknown
-}
-
-function getStoredUserName() {
-  const storedUser = localStorage.getItem('user')
-
-  if (!storedUser || !localStorage.getItem('accessToken')) {
-    return ''
-  }
-
-  try {
-    const user = JSON.parse(storedUser) as StoredUser
-    const name = typeof user.name === 'string' ? user.name.trim() : ''
-    const email = typeof user.email === 'string' ? user.email.trim() : ''
-
-    return name || email
-  } catch {
-    return ''
-  }
-}
-
 export function SiteHeader({ active, ariaLabel = '주요 메뉴' }: SiteHeaderProps) {
   const isHeaderHidden = useHideOnScroll()
   const navigate = useNavigate()
@@ -40,7 +18,8 @@ export function SiteHeader({ active, ariaLabel = '주요 메뉴' }: SiteHeaderPr
 
   useEffect(() => {
     const syncAuthState = () => {
-      setUserName(getStoredUserName())
+      const sessionUser = getAuthenticatedSessionUser()
+      setUserName(sessionUser ? getSessionUserDisplayName(sessionUser) : '')
     }
 
     syncAuthState()
@@ -54,9 +33,7 @@ export function SiteHeader({ active, ariaLabel = '주요 메뉴' }: SiteHeaderPr
   }, [])
 
   const handleLogout = () => {
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('user')
-    window.dispatchEvent(new Event('solarwise-auth-change'))
+    clearAuthSession()
     navigate('/')
   }
 

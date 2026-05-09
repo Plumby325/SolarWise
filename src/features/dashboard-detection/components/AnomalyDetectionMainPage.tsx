@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getAnomalies, getPlants, updateAnomalyStatus } from '@/api'
+import { getAnomalies, updateAnomalyStatus } from '@/api'
 import type { AnomalyEvent } from '@/api'
+import { useDefaultPlant } from '@/shared/hooks/useDefaultPlant'
 import { DashboardSidebar } from '@/shared/layout/DashboardSidebar'
+import { formatKoreanDateTime } from '@/shared/utils/dateFormat'
+import { getFallbackText } from '@/shared/utils/text'
 import styles from './AnomalyDetectionMainPage.module.css'
 
 const typeFilterOptions = ['POWER', 'VISION'] as const
@@ -49,20 +52,6 @@ function getEventTone(event: AnomalyEvent) {
   return 'blue'
 }
 
-function formatDetectedAt(value: string) {
-  return new Intl.DateTimeFormat('ko-KR', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date(value))
-}
-
-function getFallbackText(value: string | null | undefined, fallback: string) {
-  return value?.trim() ? value : fallback
-}
-
 function getFilterLabel(selectedValues: readonly string[]) {
   if (selectedValues.length === 0) {
     return '전체'
@@ -83,7 +72,7 @@ function toggleFilterValue<T extends string>(selectedValues: T[], value: T) {
 
 export function AnomalyDetectionMainPage() {
   const eventListRef = useRef<HTMLDivElement | null>(null)
-  const [plantId, setPlantId] = useState<number | null>(null)
+  const { defaultPlantId, isLoading: isPlantLoading, errorMessage: plantErrorMessage } = useDefaultPlant()
   const [events, setEvents] = useState<AnomalyEvent[]>([])
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -155,45 +144,20 @@ export function AnomalyDetectionMainPage() {
   }, [events])
 
   useEffect(() => {
-    let isActive = true
-
-    getPlants()
-      .then((response) => {
-        if (!isActive) {
-          return
-        }
-
-        const firstPlantId = response.data[0]?.plantId ?? null
-        setPlantId(firstPlantId)
-
-        if (!firstPlantId) {
-          setErrorMessage('조회 가능한 발전소가 없습니다.')
-          setIsLoading(false)
-        }
-      })
-      .catch((error) => {
-        if (!isActive) {
-          return
-        }
-
-        setErrorMessage(error instanceof Error ? error.message : '발전소 목록을 불러오지 못했습니다.')
-        setIsLoading(false)
-      })
-
-    return () => {
-      isActive = false
+    if (isPlantLoading) {
+      return
     }
-  }, [])
 
-  useEffect(() => {
-    if (!plantId) {
+    if (!defaultPlantId) {
+      setErrorMessage(plantErrorMessage || '조회 가능한 발전소가 없습니다.')
+      setIsLoading(false)
       return
     }
 
     let isActive = true
 
     const fetchEvents = () => {
-      getAnomalies(plantId, 1000)
+      getAnomalies(defaultPlantId, 1000)
         .then((response) => {
           if (!isActive) {
             return
@@ -227,7 +191,7 @@ export function AnomalyDetectionMainPage() {
       isActive = false
       window.clearInterval(pollingTimer)
     }
-  }, [plantId])
+  }, [defaultPlantId, isPlantLoading, plantErrorMessage])
 
   useEffect(() => {
     setCurrentPage(1)
@@ -260,14 +224,14 @@ export function AnomalyDetectionMainPage() {
   }, [])
 
   const handleAcknowledge = () => {
-    if (!plantId || !selectedEvent || selectedEvent.status === 'ACKNOWLEDGED' || selectedEvent.status === 'RESOLVED') {
+    if (!defaultPlantId || !selectedEvent || selectedEvent.status === 'ACKNOWLEDGED' || selectedEvent.status === 'RESOLVED') {
       return
     }
 
     setIsUpdating(true)
     setErrorMessage('')
 
-    updateAnomalyStatus(plantId, selectedEvent.eventId, 'ACKNOWLEDGED')
+    updateAnomalyStatus(defaultPlantId, selectedEvent.eventId, 'ACKNOWLEDGED')
       .then((response) => {
         setEvents((currentEvents) =>
           currentEvents.map((event) =>
@@ -409,7 +373,7 @@ export function AnomalyDetectionMainPage() {
                     <small>{event.type}</small>
                   </div>
                   <h3>{event.summary}</h3>
-                  <time>{formatDetectedAt(event.detectedAt)}</time>
+                  <time>{formatKoreanDateTime(event.detectedAt)}</time>
                   <b className={styles[`status${event.status}`]}>{event.status}</b>
                 </button>
               ))}
@@ -454,7 +418,7 @@ export function AnomalyDetectionMainPage() {
                     <span>{selectedEvent.severity}</span>
                     <small>{selectedEvent.type}</small>
                   </div>
-                  <time>{formatDetectedAt(selectedEvent.detectedAt)}</time>
+                  <time>{formatKoreanDateTime(selectedEvent.detectedAt)}</time>
                   <strong className={styles[`status${selectedEvent.status}`]}>{selectedEvent.status}</strong>
                   <h2 id="event-detail-title">{selectedEvent.summary}</h2>
                 </div>

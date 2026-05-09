@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { getAnomalyDetail, getPlants, updateAnomalyStatus } from '@/api'
+import { useSearchParams } from 'react-router-dom'
+import { getAnomalyDetail, updateAnomalyStatus } from '@/api'
 import type { AnomalyEvent } from '@/api'
+import { useDefaultPlant } from '@/shared/hooks/useDefaultPlant'
 import { DashboardSidebar } from '@/shared/layout/DashboardSidebar'
+import { BackNavLink } from '@/shared/ui/BackNavLink'
+import { formatKoreanDateTime, formatKoreanTime } from '@/shared/utils/dateFormat'
+import { getFallbackText } from '@/shared/utils/text'
 import styles from './AnomalyDetailPage.module.css'
 
 const quickQuestions = [
@@ -10,28 +14,6 @@ const quickQuestions = [
   '비슷한 이상이 이전에도 있었나요?',
   '언제 해결될까요?',
 ] as const
-
-function formatDetectedAt(value: string) {
-  return new Intl.DateTimeFormat('ko-KR', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date(value))
-}
-
-function formatTime(value: string) {
-  return new Intl.DateTimeFormat('ko-KR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date(value))
-}
-
-function getFallbackText(value: string | null | undefined, fallback: string) {
-  return value?.trim() ? value : fallback
-}
 
 function getRecommendedActions(value: string | null | undefined) {
   const text = getFallbackText(value, '담당자가 이벤트를 확인한 뒤 현장 점검 및 조치 내용을 등록하세요.')
@@ -56,7 +38,7 @@ function getSeverityTone(severity: string | undefined) {
 export function AnomalyDetailPage() {
   const [searchParams] = useSearchParams()
   const eventId = Number(searchParams.get('eventId'))
-  const [plantId, setPlantId] = useState<number | null>(null)
+  const { defaultPlantId, isLoading: isPlantLoading, errorMessage: plantErrorMessage } = useDefaultPlant()
   const [event, setEvent] = useState<AnomalyEvent | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState(false)
@@ -69,7 +51,7 @@ export function AnomalyDetailPage() {
     }
 
     const items = [
-      { time: formatTime(event.detectedAt), title: '이상 감지', detail: event.summary, tone: 'red' },
+      { time: formatKoreanTime(event.detectedAt), title: '이상 감지', detail: event.summary, tone: 'red' },
     ]
 
     if (event.status === 'ACKNOWLEDGED' || event.status === 'RESOLVED') {
@@ -111,49 +93,24 @@ export function AnomalyDetailPage() {
   }, [event])
 
   useEffect(() => {
-    let isActive = true
-
-    getPlants()
-      .then((response) => {
-        if (!isActive) {
-          return
-        }
-
-        const firstPlantId = response.data[0]?.plantId ?? null
-        setPlantId(firstPlantId)
-
-        if (!firstPlantId) {
-          setErrorMessage('조회 가능한 발전소가 없습니다.')
-          setIsLoading(false)
-        }
-      })
-      .catch((error) => {
-        if (!isActive) {
-          return
-        }
-
-        setErrorMessage(error instanceof Error ? error.message : '발전소 목록을 불러오지 못했습니다.')
-        setIsLoading(false)
-      })
-
-    return () => {
-      isActive = false
+    if (isPlantLoading) {
+      return
     }
-  }, [])
 
-  useEffect(() => {
-    if (!plantId || !hasValidEventId) {
+    if (!defaultPlantId || !hasValidEventId) {
       if (!hasValidEventId) {
         setErrorMessage('상세 조회할 이벤트 ID가 없습니다.')
-        setIsLoading(false)
+      } else {
+        setErrorMessage(plantErrorMessage || '조회 가능한 발전소가 없습니다.')
       }
+      setIsLoading(false)
       return
     }
 
     let isActive = true
 
     const fetchEvent = () => {
-      getAnomalyDetail(plantId, eventId)
+      getAnomalyDetail(defaultPlantId, eventId)
         .then((response) => {
           if (!isActive) {
             return
@@ -180,17 +137,17 @@ export function AnomalyDetailPage() {
       isActive = false
       window.clearInterval(pollingTimer)
     }
-  }, [eventId, hasValidEventId, plantId])
+  }, [defaultPlantId, eventId, hasValidEventId, isPlantLoading, plantErrorMessage])
 
   const handleStatusChange = (status: 'ACKNOWLEDGED' | 'RESOLVED') => {
-    if (!plantId || !event) {
+    if (!defaultPlantId || !event) {
       return
     }
 
     setIsUpdating(true)
     setErrorMessage('')
 
-    updateAnomalyStatus(plantId, event.eventId, status)
+    updateAnomalyStatus(defaultPlantId, event.eventId, status)
       .then((response) => {
         setEvent((currentEvent) => (currentEvent ? { ...currentEvent, status: response.data.status } : currentEvent))
       })
@@ -214,7 +171,7 @@ export function AnomalyDetailPage() {
       <main className={styles.main}>
         <header className={styles.header}>
           <div className={styles.headerTitle}>
-            <Link className={styles.backButton} to="/anomaly-detection">← 목록</Link>
+            <BackNavLink to="/anomaly-detection">← 목록</BackNavLink>
             <h1>이상 이벤트 상세</h1>
             <span className={[styles.highBadge, styles[severityTone]].join(' ')}><i />{event?.severity ?? '-'}</span>
             <span className={styles.openBadge}>{event?.status ?? '-'}</span>
@@ -244,7 +201,7 @@ export function AnomalyDetailPage() {
               <div>
                 <h2 id="event-info-title">이벤트 정보</h2>
                 <p>
-                  {event ? `${formatDetectedAt(event.detectedAt)} · ${event.type} 유형` : '이벤트 정보를 불러오는 중입니다.'}
+                  {event ? `${formatKoreanDateTime(event.detectedAt)} · ${event.type} 유형` : '이벤트 정보를 불러오는 중입니다.'}
                 </p>
               </div>
             </div>

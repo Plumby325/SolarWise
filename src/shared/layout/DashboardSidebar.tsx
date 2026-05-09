@@ -1,45 +1,31 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getAnomalies, getPlants } from '@/api'
+import { getSessionUser, getSessionUserDisplayName, getSessionUserRoleLabel } from '@/shared/utils/sessionUser'
 import { DashboardSettingsMenu } from './DashboardSettingsMenu'
 import styles from './DashboardSidebar.module.css'
 
-type SidebarSection = 'dashboard' | 'anomaly' | 'forecast'
+type SidebarSection = 'dashboard' | 'anomaly' | 'forecast' | 'notifications'
 
 type DashboardSidebarProps = {
   activeSection: SidebarSection
+  profileActive?: boolean
 }
 
 const navItems = [
   { id: 'dashboard', label: '대시보드', icon: '⊞', to: '/dashboard' },
   { id: 'anomaly', label: '이상 감지', icon: '⚠', to: '/anomaly-detection' },
   { id: 'forecast', label: '발전량 예측', icon: '↗', to: '/power-forecast' },
-  { id: 'notifications', label: '알림 설정', icon: '🔔', to: '#notifications' },
+  { id: 'notifications', label: '알림 설정', icon: '🔔', to: '/settings/notifications' },
 ] as const
 
-function getStoredUserName() {
-  const fallbackName = '사용자'
-  const storedUser = localStorage.getItem('user')
-
-  if (!storedUser) {
-    return fallbackName
-  }
-
-  try {
-    const user = JSON.parse(storedUser) as { name?: unknown; email?: unknown }
-    const name = typeof user.name === 'string' ? user.name.trim() : ''
-    const email = typeof user.email === 'string' ? user.email.trim() : ''
-
-    return name || email || fallbackName
-  } catch {
-    return fallbackName
-  }
-}
-
-export function DashboardSidebar({ activeSection }: DashboardSidebarProps) {
-  const currentUserName = getStoredUserName()
+export function DashboardSidebar({ activeSection, profileActive = false }: DashboardSidebarProps) {
+  const currentUser = getSessionUser()
+  const currentUserName = getSessionUserDisplayName(currentUser)
   const currentUserInitial = currentUserName.charAt(0)
   const [openAnomalyCount, setOpenAnomalyCount] = useState(0)
+  const [plantName, setPlantName] = useState('발전소 불러오는 중')
+  const [plantStatus, setPlantStatus] = useState('LOADING')
 
   useEffect(() => {
     let isActive = true
@@ -47,10 +33,13 @@ export function DashboardSidebar({ activeSection }: DashboardSidebarProps) {
     const fetchOpenAnomalyCount = async () => {
       try {
         const plantResponse = await getPlants()
-        const plantId = plantResponse.data[0]?.plantId
+        const selectedPlant = plantResponse.data[0]
+        const plantId = selectedPlant?.plantId
 
         if (!plantId) {
           if (isActive) {
+            setPlantName('등록된 발전소 없음')
+            setPlantStatus('INACTIVE')
             setOpenAnomalyCount(0)
           }
           return
@@ -60,10 +49,14 @@ export function DashboardSidebar({ activeSection }: DashboardSidebarProps) {
         const nextOpenCount = anomalyResponse.data.filter((anomaly) => anomaly.status === 'OPEN').length
 
         if (isActive) {
+          setPlantName(selectedPlant.name)
+          setPlantStatus(selectedPlant.status)
           setOpenAnomalyCount(nextOpenCount)
         }
       } catch {
         if (isActive) {
+          setPlantName('발전소 조회 실패')
+          setPlantStatus('ERROR')
           setOpenAnomalyCount(0)
         }
       }
@@ -89,8 +82,8 @@ export function DashboardSidebar({ activeSection }: DashboardSidebarProps) {
       <button className={styles.plantSelector} type="button">
         <span className={styles.plantAccent} aria-hidden="true" />
         <span>
-          <strong>전북 익산 1호 발전소</strong>
-          <small>● ACTIVE</small>
+          <strong>{plantName}</strong>
+          <small>● {plantStatus}</small>
         </span>
         <span className={styles.chevron} aria-hidden="true">⌄</span>
       </button>
@@ -103,6 +96,7 @@ export function DashboardSidebar({ activeSection }: DashboardSidebarProps) {
             styles.navItem,
             isActive ? styles.navItemActive : '',
             isActive && activeSection === 'anomaly' && openAnomalyCount > 0 ? styles.navItemActiveRed : '',
+            isActive && activeSection === 'notifications' ? styles.navItemActiveGreen : '',
             item.id === 'anomaly' && openAnomalyCount > 0 ? styles.navItemAlert : '',
           ]
             .filter(Boolean)
@@ -123,11 +117,11 @@ export function DashboardSidebar({ activeSection }: DashboardSidebarProps) {
         })}
       </nav>
 
-      <section className={styles.profile} aria-label="사용자 정보">
+      <section className={[styles.profile, profileActive ? styles.profileActive : ''].filter(Boolean).join(' ')} aria-label="사용자 정보">
         <span className={styles.avatar}>{currentUserInitial}</span>
         <span>
           <strong>{currentUserName}</strong>
-          <small>발전소 관리자</small>
+          <small>{getSessionUserRoleLabel(currentUser.role)}</small>
         </span>
         <DashboardSettingsMenu placement="right-end" variant="sidebar" />
       </section>

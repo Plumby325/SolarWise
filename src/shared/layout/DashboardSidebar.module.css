@@ -143,6 +143,19 @@
   background: #e24b4a;
 }
 
+.navItemActiveGreen {
+  background: rgba(29, 158, 117, 0.12);
+}
+
+.navItemActiveGreen::before {
+  background: #1d9e75;
+}
+
+.navItemActiveGreen .navIcon {
+  color: #6ee7b7;
+  background: rgba(29, 158, 117, 0.35);
+}
+
 .navItemAlert .navIcon {
   color: #f87171;
   background: rgba(226, 75, 74, 0.35);
@@ -190,6 +203,15 @@
   padding: 18px 12px 22px 16px;
   border-top: 1px solid #1a2e40;
   background: #080f18;
+}
+
+.profileActive {
+  border-top-color: #185fa5;
+  background: #1a2e40;
+}
+
+.profileActive .avatar {
+  background: rgba(24, 95, 165, 0.4);
 }
 
 .avatar {

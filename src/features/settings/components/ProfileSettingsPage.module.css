@@ -1,0 +1,335 @@
+.pageShell {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  min-height: 100vh;
+  color: #0d1b2a;
+  background: #f0f2f5;
+}
+
+.main {
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 68px;
+  padding: 0 24px;
+  border-bottom: 1px solid #e8e6e0;
+  background: #ffffff;
+}
+
+.titleGroup {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header h1,
+.header span,
+.profileCard h2,
+.profileCard p,
+.cardHeader h2,
+.cardHeader p,
+.accountCard h3 {
+  margin: 0;
+}
+
+.header h1 {
+  font-size: 18px;
+}
+
+.header > span {
+  color: #b4b2a9;
+  font-size: 11px;
+}
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: 320px minmax(520px, 816px);
+  gap: 16px;
+  padding: 16px 24px 24px;
+}
+
+.profileCard,
+.accountCard {
+  overflow: hidden;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.profileCard {
+  align-self: start;
+  min-height: 360px;
+  text-align: center;
+}
+
+.profileHero {
+  display: grid;
+  place-items: center;
+  height: 140px;
+  border-top: 3px solid #185fa5;
+  background: #0d1b2a;
+}
+
+.profileHero span {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  color: #85b7eb;
+  background: #185fa5;
+  font-size: 32px;
+  font-weight: 800;
+}
+
+.profileCard h2 {
+  margin-top: 22px;
+  color: #0d1b2a;
+  font-size: 20px;
+}
+
+.roleBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  margin-top: 8px;
+  padding: 0 13px;
+  border-radius: 999px;
+  color: #185fa5;
+  background: #e6f1fb;
+  font-size: 11px;
+}
+
+.profileStats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 14px 24px 0;
+  padding: 14px 0;
+  border-top: 1px solid #f0ede8;
+  border-bottom: 1px solid #f0ede8;
+}
+
+.profileStats span {
+  display: grid;
+  gap: 5px;
+  color: #6b8ea8;
+  font-size: 10px;
+}
+
+.profileStats span + span {
+  border-left: 1px solid #f0ede8;
+}
+
+.profileStats b {
+  color: #0d1b2a;
+  font-size: 16px;
+}
+
+.profileCard p {
+  margin-top: 12px;
+  color: #6b8ea8;
+  font-size: 11px;
+}
+
+.accountCard {
+  min-height: calc(100vh - 108px);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-height: 60px;
+  padding: 16px 24px 0;
+  border-bottom: 1px solid #f0ede8;
+}
+
+.cardHeader h2 {
+  font-size: 14px;
+}
+
+.cardHeader p {
+  margin-top: 6px;
+  color: #b4b2a9;
+  font-size: 11px;
+}
+
+.cardHeader > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+  height: 24px;
+  border-radius: 999px;
+  color: #185fa5;
+  background: #e6f1fb;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.infoList {
+  display: grid;
+  gap: 12px;
+  padding: 12px 24px 0;
+}
+
+.infoItem {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 72px;
+  padding: 0 16px;
+  border: 1px solid #eceae4;
+  border-radius: 10px;
+  background: #f8f9fa;
+}
+
+.infoItem > span {
+  color: #185fa5;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.infoItem div {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+}
+
+.infoItem small {
+  color: #888780;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.infoItem strong {
+  color: #0d1b2a;
+  font-size: 14px;
+}
+
+.divider {
+  height: 1px;
+  margin: 12px 24px 20px;
+  background: #f0ede8;
+}
+
+.accountCard h3 {
+  margin: 0 24px 10px;
+  color: #0d1b2a;
+  font-size: 12px;
+}
+
+.plantCard,
+.emptyPlant {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  min-height: 80px;
+  margin: 0 24px;
+  padding: 12px 20px;
+  border: 1px solid #b5d4f4;
+  border-radius: 12px;
+  background: #e6f1fb;
+}
+
+.plantCard::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 4px;
+  border-radius: 2px;
+  background: #185fa5;
+  content: '';
+}
+
+.plantCard strong {
+  color: #0d1b2a;
+  font-size: 14px;
+}
+
+.plantCard span {
+  color: #185fa5;
+  font-size: 11px;
+}
+
+.plantCard small,
+.emptyPlant {
+  color: #888780;
+  font-size: 10px;
+}
+
+.emptyPlant {
+  place-items: center;
+  border-style: dashed;
+  background: #f8f9fa;
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin: 20px 24px 0;
+  padding: 0 16px;
+  border: 1px solid #fac775;
+  border-radius: 10px;
+  color: #ba7517;
+  background: #fff8f0;
+  font-size: 12px;
+}
+
+.notice span {
+  font-size: 14px;
+}
+
+@media (max-width: 1100px) {
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .accountCard {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .pageShell {
+    grid-template-columns: 1fr;
+  }
+
+  .header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .contentGrid {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .titleGroup {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .profileStats {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .profileStats span + span {
+    padding-top: 12px;
+    border-top: 1px solid #f0ede8;
+    border-left: 0;
+  }
+}
