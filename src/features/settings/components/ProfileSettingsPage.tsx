@@ -1,14 +1,100 @@
+import { useEffect, useState } from 'react'
+import { getAnomalies, getCurrentUser } from '@/api'
 import { useDefaultPlant } from '@/shared/hooks/useDefaultPlant'
 import { DashboardSidebar } from '@/shared/layout/DashboardSidebar'
 import { BackNavLink } from '@/shared/ui/BackNavLink'
+import { getLastLoginAtIso, getStoredAccountCreatedAtIso, persistAccountCreatedAtFromApi } from '@/shared/utils/accountCreatedAt'
+import { formatKoreanDateTime, formatKoreanSignupYmd, formatUsagePeriodSince } from '@/shared/utils/dateFormat'
 import { formatSessionUserRole, getSessionUser, getSessionUserRoleLabel } from '@/shared/utils/sessionUser'
 import styles from './ProfileSettingsPage.module.css'
+
+/** 발전소별 최근 이상 목록 상한. 전체 RESOLVED 건수 추정에 사용(백엔드 집계 API 없음). */
+const ANOMALY_FETCH_LIMIT = 5000
 
 export function ProfileSettingsPage() {
   const currentUser = getSessionUser()
   const userInitial = currentUser.name.charAt(0)
   const { plants, defaultPlant: selectedPlant } = useDefaultPlant()
-  const plantCountText = `${plants.length || 0}개`
+
+  const [usageLabel, setUsageLabel] = useState('…')
+  const [joinLabel, setJoinLabel] = useState('…')
+  const [resolvedLabel, setResolvedLabel] = useState('…')
+  const [lastLoginLabel, setLastLoginLabel] = useState('…')
+
+  useEffect(() => {
+    const last = getLastLoginAtIso()
+    setLastLoginLabel(last ? formatKoreanDateTime(last) : '기록 없음')
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    ;(async () => {
+      let createdIso: string | null = null
+
+      try {
+        const me = await getCurrentUser()
+        if (cancelled) {
+          return
+        }
+        if (me.data.createdAt) {
+          persistAccountCreatedAtFromApi(me.data.userId, me.data.createdAt)
+          createdIso = me.data.createdAt
+        }
+      } catch {
+        /* 비로그인·네트워크: 로컬 저장값만 사용 */
+      }
+
+      if (!createdIso && currentUser.userId) {
+        createdIso = getStoredAccountCreatedAtIso(currentUser.userId)
+      }
+
+      if (!cancelled) {
+        if (createdIso) {
+          setJoinLabel(formatKoreanSignupYmd(createdIso))
+          setUsageLabel(formatUsagePeriodSince(createdIso))
+        } else {
+          setJoinLabel('—')
+          setUsageLabel('—')
+        }
+      }
+
+      if (!plants.length) {
+        if (!cancelled) {
+          setResolvedLabel('0건')
+        }
+        return
+      }
+
+      try {
+        const responses = await Promise.all(
+          plants.map((p) => getAnomalies(p.plantId, ANOMALY_FETCH_LIMIT)),
+        )
+        if (cancelled) {
+          return
+        }
+        let resolved = 0
+        for (const res of responses) {
+          for (const ev of res.data) {
+            if (ev.status === 'RESOLVED') {
+              resolved++
+            }
+          }
+        }
+        setResolvedLabel(`${resolved.toLocaleString('ko-KR')}건`)
+      } catch {
+        if (!cancelled) {
+          setResolvedLabel('—')
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [plants, currentUser.userId])
+
+  const plantCountText = `${(plants.length || 0).toLocaleString('ko-KR')}개`
 
   return (
     <div className={styles.pageShell}>
@@ -20,7 +106,7 @@ export function ProfileSettingsPage() {
             <BackNavLink to="/dashboard">← 돌아가기</BackNavLink>
             <h1>내 프로필</h1>
           </div>
-          <span>마지막 로그인: 2026.00.00 00:00</span>
+          <span>마지막 로그인: {lastLoginLabel}</span>
         </header>
 
         <div className={styles.contentGrid}>
@@ -37,16 +123,16 @@ export function ProfileSettingsPage() {
                 등록 발전소
               </span>
               <span>
-                <b>28일</b>
+                <b>{usageLabel}</b>
                 이용 기간
               </span>
               <span>
-                <b>7건</b>
+                <b>{resolvedLabel}</b>
                 해결된 이상
               </span>
             </div>
 
-            <p>가입일: 2026.04.06</p>
+            <p>가입일: {joinLabel}</p>
           </aside>
 
           <section className={styles.accountCard} aria-labelledby="account-info-title">

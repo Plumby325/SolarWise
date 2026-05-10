@@ -47,3 +47,49 @@ export function formatRelativeTime(value: string | number | Date) {
 
   return `${Math.floor(elapsedHours / 24)}일 전`
 }
+
+export function formatUsagePeriodSince(createdAt: string | number | Date): string {
+  const start = new Date(createdAt).getTime()
+  if (Number.isNaN(start)) {
+    return '—'
+  }
+
+  const totalMs = Math.max(0, Date.now() - start)
+  const totalDays = Math.floor(totalMs / 86_400_000)
+
+  if (totalDays < 1) {
+    return '1일 미만'
+  }
+
+  if (totalDays < 30) {
+    return `${totalDays}일`
+  }
+
+  if (totalDays < 365) {
+    const months = Math.floor(totalDays / 30)
+    const days = totalDays % 30
+    return days > 0 ? `${months}개월 ${days}일` : `${months}개월`
+  }
+
+  const years = Math.floor(totalDays / 365)
+  const afterYears = totalDays % 365
+  const months = Math.floor(afterYears / 30)
+  const days = afterYears % 30
+
+  const parts: string[] = [`${years}년`]
+  if (months > 0) {
+    parts.push(`${months}개월`)
+  } else if (days > 0) {
+    parts.push(`${days}일`)
+  }
+
+  return parts.join(' ')
+}
+
+export function formatKoreanSignupYmd(value: string | number | Date) {
+  return new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }).format(new Date(value))
+}

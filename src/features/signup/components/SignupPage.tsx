@@ -2,6 +2,7 @@ import type { ChangeEvent, FormEvent } from 'react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { signup } from '@/api'
+import { rememberSignupForAccountStart } from '@/shared/utils/accountCreatedAt'
 import { SiteHeader } from '@/shared/layout/SiteHeader'
 import styles from './SignupPage.module.css'
 
@@ -110,6 +111,7 @@ export function SignupPage() {
         password: form.password,
         role: 'OWNER',
       })
+      rememberSignupForAccountStart(form.email.trim())
       navigate('/login')
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : '회원가입 중 오류가 발생했습니다.')

@@ -11,7 +11,7 @@ type DashboardSettingsMenuProps = {
 const settingItems = [
   { label: '내 프로필', description: '계정 정보 관리', to: '/settings/profile', icon: '👤' },
   { label: '알림 설정', description: '이메일 알림 관리', to: '/settings/notifications', icon: '🔔' },
-  { label: '발전소 관리', description: '발전소 추가/변경', to: '/settings#plant', icon: '🏭' },
+  { label: '발전소 설정', description: '발전소 목록·상세 관리', to: '/settings/plant', icon: '🏭' },
 ] as const
 
 export function DashboardSettingsMenu({

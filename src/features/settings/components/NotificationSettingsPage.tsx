@@ -24,7 +24,10 @@ const alertTypes: Array<{ id: AlertTypeId; label: string; tone: 'blue' | 'green'
   { id: 'accuracy', label: '예측 정확도 저하', tone: 'amber' },
 ]
 
-const mailHistory = [
+type MailEvent = { status: 'SENT' | 'FAILED'; severity: string; title: string; email: string; time: string }
+
+/** 데모/향후 API 연동용: 목록에는 SENT만 노출, 통계는 성공·실패 모두 반영 */
+const mailEventsAll: readonly MailEvent[] = [
   { status: 'SENT', severity: 'HIGH', title: '예상 대비 발전량 28% 감소', email: 'alert@solarwise.com', time: '오늘 13:41' },
   { status: 'SENT', severity: 'MEDIUM', title: '패널 표면 오염 의심', email: 'alert@solarwise.com', time: '오늘 13:51' },
   { status: 'SENT', severity: 'HIGH', title: '패널 크랙 감지', email: 'alert@solarwise.com', time: '2일 전 09:11' },
@@ -32,12 +35,21 @@ const mailHistory = [
   { status: 'SENT', severity: 'LOW', title: '발전 효율 소폭 감소', email: 'alert@solarwise.com', time: '4일 전 16:22' },
 ] as const
 
+function filterSentMailEvents(events: readonly MailEvent[]) {
+  return events.filter((event) => event.status === 'SENT')
+}
+
 export function NotificationSettingsPage() {
   const [isEmailEnabled, setIsEmailEnabled] = useState(true)
   const [selectedSeverity, setSelectedSeverity] = useState<Severity>('MEDIUM')
   const [selectedTypes, setSelectedTypes] = useState<AlertTypeId[]>(['power', 'vision'])
   const [dedupeMinutes, setDedupeMinutes] = useState('30')
   const [email, setEmail] = useState(() => getSessionUser({ name: '사용자', email: 'alert@solarwise.com', role: 'OWNER' }).email)
+
+  const mailHistorySentOnly = filterSentMailEvents(mailEventsAll)
+  const mailAttemptTotal = mailEventsAll.length
+  const mailSuccessCount = mailHistorySentOnly.length
+  const mailFailedCount = mailAttemptTotal - mailSuccessCount
 
   const toggleAlertType = (typeId: AlertTypeId) => {
     setSelectedTypes((currentTypes) =>
@@ -163,13 +175,13 @@ export function NotificationSettingsPage() {
             </div>
 
             <div className={styles.historyList}>
-              {mailHistory.map((history) => (
+              {mailHistorySentOnly.map((history) => (
                 <article
                   key={`${history.title}-${history.time}`}
-                  className={[styles.historyItem, history.status === 'FAILED' ? styles.historyFailed : ''].filter(Boolean).join(' ')}
+                  className={styles.historyItem}
                 >
                   <div className={styles.historyBadges}>
-                    <span className={history.status === 'FAILED' ? styles.failedBadge : styles.sentBadge}>{history.status}</span>
+                    <span className={styles.sentBadge}>{history.status}</span>
                     <span className={styles[`severity${history.severity}`]}>{history.severity}</span>
                   </div>
                   <strong>{history.title}</strong>
@@ -183,15 +195,15 @@ export function NotificationSettingsPage() {
               <strong>이번 달 발송 통계</strong>
               <div>
                 <span>
-                  <b>12</b>
-                  총 발송
+                  <b>{mailAttemptTotal}</b>
+                  발송 시도
                 </span>
                 <span>
-                  <b>11</b>
+                  <b>{mailSuccessCount}</b>
                   성공
                 </span>
                 <span>
-                  <b className={styles.failedCount}>1</b>
+                  <b className={styles.failedCount}>{mailFailedCount}</b>
                   실패
                 </span>
               </div>
