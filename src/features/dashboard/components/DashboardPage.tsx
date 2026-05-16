@@ -5,8 +5,14 @@ import { getAnomalies, getDashboardSummary, getForecast, getMeasurements, getPla
 import type { AnomalyEvent, DashboardSummary, ForecastPoint, MeasurementPoint, Plant } from '@/api'
 import { DashboardSidebar } from '@/shared/layout/DashboardSidebar'
 import { DashboardSettingsMenu } from '@/shared/layout/DashboardSettingsMenu'
+import {
+  FORECAST_BRIDGE_MEASUREMENT_WINDOW_MS,
+  buildForecastComboChartOption,
+  createDummyBridgeMeasurements,
+  createDummyForecastSeries,
+} from '@/shared/charts/forecastComboChartOption'
 import { EChart } from '@/shared/ui/EChart'
-import { formatKoreanDateTime, formatKoreanMonthDay, formatRelativeTime } from '@/shared/utils/dateFormat'
+import { formatKoreanDateTime, formatLocalDateTimeForApi, formatRelativeTime } from '@/shared/utils/dateFormat'
 import styles from './DashboardPage.module.css'
 
 const generationRanges = [
@@ -49,10 +55,6 @@ function formatGenerationChartTime(value: string | number, rangeId: GenerationRa
   return formatChartTime(date.getTime())
 }
 
-function formatChartDate(value: string) {
-  return formatKoreanMonthDay(value)
-}
-
 function roundChartValue(value: number) {
   return Number(value.toFixed(1))
 }
@@ -87,21 +89,14 @@ function createDummyMeasurements(rangeId: GenerationRangeId): MeasurementPoint[]
   })
 }
 
-function createDummyForecasts(): ForecastPoint[] {
-  const startTime = Date.now() + 60 * 60 * 1000
-  const intervalMs = 6 * 60 * 60 * 1000
+function getPowerAxisMax(values: number[]) {
+  const maxValue = Math.max(...values, 0)
 
-  return Array.from({ length: 8 }, (_, index) => {
-    const curve = Math.sin(((index % 4) + 1) / 5 * Math.PI)
+  if (maxValue <= 0) {
+    return 100
+  }
 
-    return {
-      target_time: new Date(startTime + intervalMs * index).toISOString(),
-      predicted_power_kw: Math.max(0, 2600 + curve * 6200 - Math.floor(index / 4) * 350),
-      confidence: 0.9 - index * 0.015,
-      model_version: 'Dummy-XGBoost',
-      model_notes: 'API 데이터 없음 - 프론트 더미 데이터',
-    }
-  })
+  return Math.ceil((maxValue * 1.15) / 100) * 100
 }
 
 function getAnomalyTone(severity: string) {
@@ -143,34 +138,6 @@ function formatMetric(value: number | undefined, digits = 1) {
   })
 }
 
-function getPowerAxisMax(values: number[]) {
-  const maxValue = Math.max(...values, 0)
-
-  if (maxValue <= 0) {
-    return 100
-  }
-
-  return Math.ceil((maxValue * 1.15) / 100) * 100
-}
-
-function formatLocalDateTimeParam(date: Date) {
-  const pad = (value: number) => String(value).padStart(2, '0')
-
-  return [
-    date.getFullYear(),
-    '-',
-    pad(date.getMonth() + 1),
-    '-',
-    pad(date.getDate()),
-    'T',
-    pad(date.getHours()),
-    ':',
-    pad(date.getMinutes()),
-    ':',
-    pad(date.getSeconds()),
-  ].join('')
-}
-
 export function DashboardPage() {
   const [selectedGenerationRange, setSelectedGenerationRange] = useState<GenerationRangeId>('1h')
   const [plants, setPlants] = useState<Plant[]>([])
@@ -184,6 +151,8 @@ export function DashboardPage() {
   const [notificationError, setNotificationError] = useState('')
   const [measurementError, setMeasurementError] = useState('')
   const [forecastError, setForecastError] = useState('')
+  const [forecastBridgeMeasurements, setForecastBridgeMeasurements] = useState<MeasurementPoint[]>([])
+  const [forecastBridgeError, setForecastBridgeError] = useState('')
   const [refreshKey, setRefreshKey] = useState(0)
   const selectedPlant = plants.find((plant) => plant.plantId === selectedPlantId)
   const activeAnomalies = anomalies.filter((anomaly) => anomaly.status !== 'RESOLVED')
@@ -278,7 +247,7 @@ export function DashboardPage() {
       const to = new Date()
       const from = new Date(to.getTime() - getGenerationRangeDuration(selectedGenerationRange))
 
-      getMeasurements(selectedPlantId, formatLocalDateTimeParam(from), formatLocalDateTimeParam(to))
+      getMeasurements(selectedPlantId, formatLocalDateTimeForApi(from), formatLocalDateTimeForApi(to))
         .then((measurementResponse) => {
           if (!isActive) {
             return
@@ -364,7 +333,7 @@ export function DashboardPage() {
           }
 
           const hasBackendData = forecastResponse.data.forecast_series.length > 0
-          setForecasts(hasBackendData ? forecastResponse.data.forecast_series : createDummyForecasts())
+          setForecasts(hasBackendData ? forecastResponse.data.forecast_series : createDummyForecastSeries())
           setForecastError(hasBackendData ? '' : '예측 API 데이터 없음 · 더미 데이터 표시 중')
         })
         .catch((error) => {
@@ -373,7 +342,7 @@ export function DashboardPage() {
           }
 
           console.error('AI 발전량 예측 조회 실패:', error)
-          setForecasts(createDummyForecasts())
+          setForecasts(createDummyForecastSeries())
           setForecastError(`${error instanceof Error ? error.message : '예측 API 조회 실패'} · 더미 데이터 표시 중`)
         })
     }
@@ -384,6 +353,49 @@ export function DashboardPage() {
     return () => {
       isActive = false
       window.clearInterval(pollingTimer)
+    }
+  }, [refreshKey, selectedPlantId])
+
+  useEffect(() => {
+    if (!selectedPlantId) {
+      setForecastBridgeMeasurements([])
+      setForecastBridgeError('발전소 데이터 없음')
+      return
+    }
+
+    let isActive = true
+
+    const fetchForecastBridge = () => {
+      const to = new Date()
+      const from = new Date(to.getTime() - FORECAST_BRIDGE_MEASUREMENT_WINDOW_MS)
+
+      getMeasurements(selectedPlantId, formatLocalDateTimeForApi(from), formatLocalDateTimeForApi(to))
+        .then((measurementResponse) => {
+          if (!isActive) {
+            return
+          }
+
+          const hasBackendData = measurementResponse.data.series.length > 0
+          setForecastBridgeMeasurements(hasBackendData ? measurementResponse.data.series : createDummyBridgeMeasurements())
+          setForecastBridgeError(hasBackendData ? '' : '계측 API 데이터 없음 · 더미 데이터 표시 중')
+        })
+        .catch((error) => {
+          if (!isActive) {
+            return
+          }
+
+          console.error('예측 차트용 계측 조회 실패:', error)
+          setForecastBridgeMeasurements(createDummyBridgeMeasurements())
+          setForecastBridgeError(`${error instanceof Error ? error.message : '계측 API 조회 실패'} · 더미 데이터 표시 중`)
+        })
+    }
+
+    fetchForecastBridge()
+    const bridgeTimer = window.setInterval(fetchForecastBridge, 5000)
+
+    return () => {
+      isActive = false
+      window.clearInterval(bridgeTimer)
     }
   }, [refreshKey, selectedPlantId])
 
@@ -491,93 +503,16 @@ export function DashboardPage() {
     }
   }, [measurementError, measurements, selectedGenerationRange])
 
-  const forecastChartOption = useMemo<EChartsCoreOption>(() => {
-    const actualMeasurements = measurements.slice(-5)
-    const latestActualMeasurement = actualMeasurements[actualMeasurements.length - 1]
-    const hasForecastChartData = actualMeasurements.length > 0 || forecasts.length > 0
-    const labels = [
-      ...actualMeasurements.map((point) => formatChartDate(point.measuredAt)),
-      ...forecasts.map((point) => formatChartDate(point.target_time)),
-    ]
-    const actualData = [
-      ...actualMeasurements.map((point) => roundChartValue(point.powerKw)),
-      ...forecasts.map(() => null),
-    ]
-    const forecastData = [
-      ...actualMeasurements.slice(0, -1).map(() => null),
-      latestActualMeasurement ? roundChartValue(latestActualMeasurement.powerKw) : null,
-      ...forecasts.map((point) => roundChartValue(point.predicted_power_kw)),
-    ]
-    const chartValues = [
-      ...actualMeasurements.map((point) => point.powerKw),
-      ...forecasts.map((point) => point.predicted_power_kw),
-    ]
-
-    return {
-      color: ['#1d9e75', '#185fa5'],
-      grid: { top: 16, right: 16, bottom: 34, left: 48 },
-      graphic: !hasForecastChartData
-        ? {
-            type: 'text',
-            left: 'center',
-            top: 'middle',
-            style: {
-              text: forecastError || measurementError || '예측 API 데이터 없음',
-              fill: '#888780',
-              fontSize: 13,
-              fontWeight: 600,
-            },
-          }
-        : undefined,
-      tooltip: {
-        trigger: 'axis',
-        valueFormatter: (value: unknown) => (typeof value === 'number' ? `${value} kW` : '-'),
-      },
-      legend: {
-        bottom: 0,
-        left: 0,
-        itemWidth: 8,
-        itemHeight: 8,
-        textStyle: { color: '#5f5e5a', fontSize: 9 },
-      },
-      xAxis: {
-        type: 'category',
-        boundaryGap: false,
-        data: labels,
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: { color: '#c4c2bb', fontSize: 9 },
-      },
-      yAxis: {
-        type: 'value',
-        min: 0,
-        max: getPowerAxisMax(chartValues),
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: { color: '#c4c2bb', fontSize: 9 },
-        splitLine: { lineStyle: { color: '#f5f3ef' } },
-      },
-      series: [
-        {
-          name: '실측값',
-          type: 'line',
-          smooth: true,
-          symbol: 'none',
-          lineStyle: { width: 3 },
-          data: actualData,
-        },
-        {
-          name: '예측값 (XGBoost)',
-          type: 'line',
-          smooth: true,
-          symbol: 'none',
-          lineStyle: { width: 3 },
-          areaStyle: { color: 'rgba(24, 95, 165, 0.06)' },
-          data: forecastData,
-        },
-      ],
-    }
-  }, [forecastError, forecasts, measurementError, measurements])
+  const forecastChartOption = useMemo<EChartsCoreOption>(
+    () =>
+      buildForecastComboChartOption({
+        bridgeMeasurements: forecastBridgeMeasurements,
+        forecasts,
+        bridgeError: forecastBridgeError,
+        forecastError,
+      }),
+    [forecastBridgeError, forecastBridgeMeasurements, forecastError, forecasts],
+  )
 
   const shapChartOption = useMemo<EChartsCoreOption>(() => ({
     grid: { top: 4, right: 58, bottom: 0, left: 58 },

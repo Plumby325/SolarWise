@@ -4,7 +4,7 @@ import { useHideOnScroll } from '@/shared/hooks/useHideOnScroll'
 import { clearAuthSession, getAuthenticatedSessionUser, getSessionUserDisplayName } from '@/shared/utils/sessionUser'
 import styles from './SiteHeader.module.css'
 
-type ActiveNav = 'services' | 'about' | 'login' | 'signup'
+type ActiveNav = 'services' | 'about' | 'resources' | 'login' | 'signup'
 
 type SiteHeaderProps = {
   active?: ActiveNav
@@ -52,7 +52,9 @@ export function SiteHeader({ active, ariaLabel = '주요 메뉴' }: SiteHeaderPr
               서비스 소개
             </Link>
             <Link to="/dashboard">대시보드</Link>
-            <Link to="/#resources">리소스</Link>
+            <Link to="/resources" className={active === 'resources' ? styles.navActive : undefined}>
+              리소스
+            </Link>
             <Link to="/about" className={active === 'about' ? styles.navActive : undefined}>
               팀 소개
             </Link>

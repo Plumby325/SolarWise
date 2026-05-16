@@ -1,7 +1,26 @@
+import { useEffect, useMemo, useState } from 'react'
+import type { EChartsCoreOption } from 'echarts/core'
+import { getForecast, getMeasurements } from '@/api'
+import type { ForecastPoint, MeasurementPoint } from '@/api'
+import {
+  FORECAST_BRIDGE_MEASUREMENT_WINDOW_MS,
+  type ForecastHorizonId,
+  buildForecastComboChartOption,
+  createDummyBridgeMeasurements,
+  createDummyForecastSeries,
+  filterForecastsByHorizon,
+} from '@/shared/charts/forecastComboChartOption'
+import { useDefaultPlant } from '@/shared/hooks/useDefaultPlant'
 import { DashboardSidebar } from '@/shared/layout/DashboardSidebar'
+import { EChart } from '@/shared/ui/EChart'
+import { formatLocalDateTimeForApi } from '@/shared/utils/dateFormat'
 import styles from './PowerForecastPage.module.css'
 
-const periodFilters = ['오늘', '2일', '3일'] as const
+const periodFilters: Array<{ id: ForecastHorizonId; label: string }> = [
+  { id: 'today', label: '오늘' },
+  { id: '2d', label: '2일' },
+  { id: '3d', label: '3일' },
+]
 
 const summaryCards = [
   {
@@ -49,6 +68,108 @@ const weatherCards = [
 ] as const
 
 export function PowerForecastPage() {
+  const { defaultPlantId } = useDefaultPlant()
+  const [forecastHorizon, setForecastHorizon] = useState<ForecastHorizonId>('2d')
+  const [forecasts, setForecasts] = useState<ForecastPoint[]>([])
+  const [forecastError, setForecastError] = useState('')
+  const [bridgeMeasurements, setBridgeMeasurements] = useState<MeasurementPoint[]>([])
+  const [bridgeError, setBridgeError] = useState('')
+
+  useEffect(() => {
+    if (!defaultPlantId) {
+      setForecasts([])
+      setForecastError('발전소 데이터 없음')
+      return
+    }
+
+    let isActive = true
+
+    const fetchForecasts = () => {
+      getForecast(defaultPlantId)
+        .then((res) => {
+          if (!isActive) {
+            return
+          }
+          const hasData = res.data.forecast_series.length > 0
+          setForecasts(hasData ? res.data.forecast_series : createDummyForecastSeries())
+          setForecastError(hasData ? '' : '예측 API 데이터 없음 · 더미 데이터 표시 중')
+        })
+        .catch((error) => {
+          if (!isActive) {
+            return
+          }
+          console.error('발전량 예측 조회 실패:', error)
+          setForecasts(createDummyForecastSeries())
+          setForecastError(`${error instanceof Error ? error.message : '예측 API 조회 실패'} · 더미 데이터 표시 중`)
+        })
+    }
+
+    fetchForecasts()
+    const timer = window.setInterval(fetchForecasts, 30000)
+
+    return () => {
+      isActive = false
+      window.clearInterval(timer)
+    }
+  }, [defaultPlantId])
+
+  useEffect(() => {
+    if (!defaultPlantId) {
+      setBridgeMeasurements([])
+      setBridgeError('발전소 데이터 없음')
+      return
+    }
+
+    let isActive = true
+
+    const fetchBridge = () => {
+      const to = new Date()
+      const from = new Date(to.getTime() - FORECAST_BRIDGE_MEASUREMENT_WINDOW_MS)
+
+      getMeasurements(defaultPlantId, formatLocalDateTimeForApi(from), formatLocalDateTimeForApi(to))
+        .then((res) => {
+          if (!isActive) {
+            return
+          }
+          const hasData = res.data.series.length > 0
+          setBridgeMeasurements(hasData ? res.data.series : createDummyBridgeMeasurements())
+          setBridgeError(hasData ? '' : '계측 API 데이터 없음 · 더미 데이터 표시 중')
+        })
+        .catch((error) => {
+          if (!isActive) {
+            return
+          }
+          console.error('예측 차트용 계측 조회 실패:', error)
+          setBridgeMeasurements(createDummyBridgeMeasurements())
+          setBridgeError(`${error instanceof Error ? error.message : '계측 API 조회 실패'} · 더미 데이터 표시 중`)
+        })
+    }
+
+    fetchBridge()
+    const timer = window.setInterval(fetchBridge, 5000)
+
+    return () => {
+      isActive = false
+      window.clearInterval(timer)
+    }
+  }, [defaultPlantId])
+
+  const filteredForecasts = useMemo(
+    () => filterForecastsByHorizon(forecasts, forecastHorizon),
+    [forecastHorizon, forecasts],
+  )
+
+  const chartOption = useMemo<EChartsCoreOption>(
+    () =>
+      buildForecastComboChartOption({
+        bridgeMeasurements,
+        forecasts: filteredForecasts,
+        bridgeError,
+        forecastError,
+      }),
+    [bridgeError, bridgeMeasurements, forecastError, filteredForecasts],
+  )
+
   return (
     <div className={styles.page}>
       <DashboardSidebar activeSection="forecast" />
@@ -63,8 +184,13 @@ export function PowerForecastPage() {
           <div className={styles.periodControls} aria-label="예측 기간">
             <span>예측 기간</span>
             {periodFilters.map((filter) => (
-              <button key={filter} className={filter === '오늘' ? styles.periodActive : undefined} type="button">
-                {filter}
+              <button
+                key={filter.id}
+                className={forecastHorizon === filter.id ? styles.periodActive : undefined}
+                type="button"
+                onClick={() => setForecastHorizon(filter.id)}
+              >
+                {filter.label}
               </button>
             ))}
           </div>
@@ -93,48 +219,26 @@ export function PowerForecastPage() {
           <div className={styles.panelHeader}>
             <div>
               <h2 id="forecast-chart-title">2~3일 발전량 예측</h2>
-              <p>XGBoost 기반 · 실측 + 예측 · 신뢰도 구간 포함</p>
+              <p>{forecastError || bridgeError || 'XGBoost 기반 · 실측 + 예측 · 대시보드와 동일 차트'}</p>
             </div>
             <span className={styles.aiBadge}>AI Powered</span>
             <div className={styles.unitControls} aria-label="데이터 단위">
               <span>데이터 단위</span>
-              <button type="button">시간별</button>
-              <button className={styles.unitActive} type="button">일별</button>
+              <button type="button" className={styles.unitActive} disabled>
+                시간별
+              </button>
+              <button type="button" disabled title="준비 중">
+                일별
+              </button>
             </div>
           </div>
 
-          <div className={styles.forecastChart} aria-label="발전량 예측 선형 차트">
-            <span className={styles.currentMarker}>현재</span>
-            <svg viewBox="0 0 1072 232" role="img" aria-hidden="true" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="confidenceArea" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#185fa5" stopOpacity="0.1" />
-                  <stop offset="100%" stopColor="#185fa5" stopOpacity="0.02" />
-                </linearGradient>
-              </defs>
-              <path className={styles.confidenceBand} d="M125 74 L190 62 L260 48 L330 38 L400 34 L470 48 L540 66 L610 92 L680 108 L750 88 L820 62 L890 56 L960 70 L1040 88 L1040 124 L960 106 L890 92 L820 98 L750 122 L680 144 L610 132 L540 104 L470 86 L400 72 L330 78 L260 84 L190 96 L125 112 Z" />
-              <polyline className={styles.actualLine} points="0,222 12,190 24,144 36,92 48,48 60,20 72,34 84,64" />
-              <polyline className={styles.predictedLine} points="84,64 160,58 240,44 320,36 400,40 480,56 560,82 640,108 720,96 800,70 880,58 960,66 1040,86 1072,82" />
-              <line className={styles.nowLine} x1="84" x2="84" y1="0" y2="232" />
-            </svg>
-            <div className={styles.yAxis}>
-              <span>100</span>
-              <span>80</span>
-              <span>60</span>
-              <span>40</span>
-              <span>20</span>
-            </div>
-            <div className={styles.xAxis}>
-              <span>4/17 오늘</span>
-              <span>4/18 내일</span>
-              <span>4/19</span>
-              <span>4/20</span>
-            </div>
-            <div className={styles.legend}>
-              <span><i className={styles.actualDot} />실측값</span>
-              <span><i className={styles.predictedDot} />예측값 (XGBoost)</span>
-              <span><i className={styles.bandKey} />신뢰 구간 (±8kW)</span>
-            </div>
+          <div className={styles.forecastEChartWrap}>
+            <EChart
+              ariaLabel="2~3일 발전량 예측 ECharts"
+              className={styles.forecastPageEChart}
+              option={chartOption}
+            />
           </div>
         </section>
 

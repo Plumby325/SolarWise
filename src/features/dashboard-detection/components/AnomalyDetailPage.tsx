@@ -148,8 +148,9 @@ export function AnomalyDetailPage() {
     setErrorMessage('')
 
     updateAnomalyStatus(defaultPlantId, event.eventId, status)
-      .then((response) => {
-        setEvent((currentEvent) => (currentEvent ? { ...currentEvent, status: response.data.status } : currentEvent))
+      .then(() => getAnomalyDetail(defaultPlantId, eventId))
+      .then((refresh) => {
+        setEvent(refresh.data)
       })
       .catch((error) => {
         setErrorMessage(error instanceof Error ? error.message : '이벤트 상태 변경에 실패했습니다.')

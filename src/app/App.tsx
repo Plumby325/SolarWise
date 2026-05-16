@@ -3,6 +3,7 @@ import { AboutPage } from '@/features/about'
 import { AnomalyDetailPage, AnomalyDetectionMainPage } from '@/features/dashboard-detection'
 import { DashboardPage } from '@/features/dashboard'
 import { HomePage } from '@/features/home'
+import { DashboardGuideArticlePage, ResourcesPage, ServiceStartArticlePage } from '@/features/resources'
 import { LoginPage } from '@/features/login'
 import { PowerForecastPage } from '@/features/power-forecast'
 import { ServiceIntroductionPage } from '@/features/service-introduction'
@@ -16,6 +17,9 @@ export default function App() {
       <Route path="/" element={<HomePage />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/services" element={<ServiceIntroductionPage />} />
+      <Route path="/resources" element={<ResourcesPage />} />
+      <Route path="/resources/service-start" element={<ServiceStartArticlePage />} />
+      <Route path="/resources/dashboard-guide" element={<DashboardGuideArticlePage />} />
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/power-forecast" element={<PowerForecastPage />} />
       <Route path="/anomaly-detection" element={<AnomalyDetectionMainPage />} />

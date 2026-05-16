@@ -93,3 +93,22 @@ export function formatKoreanSignupYmd(value: string | number | Date) {
     day: 'numeric',
   }).format(new Date(value))
 }
+
+/** 쿼리 파라미터용 로컬 시각 문자열 (백엔드 `from`/`to` 등) */
+export function formatLocalDateTimeForApi(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0')
+
+  return [
+    date.getFullYear(),
+    '-',
+    pad(date.getMonth() + 1),
+    '-',
+    pad(date.getDate()),
+    'T',
+    pad(date.getHours()),
+    ':',
+    pad(date.getMinutes()),
+    ':',
+    pad(date.getSeconds()),
+  ].join('')
+}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getPlants } from '@/api'
 import type { Plant } from '@/api'
 
@@ -11,34 +11,25 @@ export function useDefaultPlant({ refreshKey }: UseDefaultPlantOptions = {}) {
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
 
-  useEffect(() => {
-    let isActive = true
-
+  const loadPlants = useCallback(async () => {
     setIsLoading(true)
-    getPlants()
-      .then((response) => {
-        if (!isActive) {
-          return
-        }
-
-        setPlants(response.data)
-        setErrorMessage(response.data.length === 0 ? '조회 가능한 발전소가 없습니다.' : '')
-        setIsLoading(false)
-      })
-      .catch((error) => {
-        if (!isActive) {
-          return
-        }
-
-        setPlants([])
-        setErrorMessage(error instanceof Error ? error.message : '발전소 목록을 불러오지 못했습니다.')
-        setIsLoading(false)
-      })
-
-    return () => {
-      isActive = false
+    try {
+      const response = await getPlants()
+      setPlants(response.data)
+      setErrorMessage(response.data.length === 0 ? '조회 가능한 발전소가 없습니다.' : '')
+      return response.data
+    } catch (error) {
+      setPlants([])
+      setErrorMessage(error instanceof Error ? error.message : '발전소 목록을 불러오지 못했습니다.')
+      return []
+    } finally {
+      setIsLoading(false)
     }
-  }, [refreshKey])
+  }, [])
+
+  useEffect(() => {
+    void loadPlants()
+  }, [refreshKey, loadPlants])
 
   const defaultPlant = useMemo(() => plants[0] ?? null, [plants])
 
@@ -48,5 +39,6 @@ export function useDefaultPlant({ refreshKey }: UseDefaultPlantOptions = {}) {
     defaultPlantId: defaultPlant?.plantId ?? null,
     isLoading,
     errorMessage,
+    refetch: loadPlants,
   }
 }

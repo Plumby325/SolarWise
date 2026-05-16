@@ -103,6 +103,10 @@ export function getAnomalyDetail(plantId: number, eventId: number) {
   return apiClient<ApiResponse<AnomalyEvent>>(`/api/v1/plants/${plantId}/anomalies/${eventId}`)
 }
 
+/**
+ * 이상 이벤트 상태 변경 — 백엔드 {@code PATCH /api/v1/plants/{plantId}/anomalies/{eventId}/status}
+ * 요청 본문: {@code { "status": "OPEN" | "ACKNOWLEDGED" | "RESOLVED" }}
+ */
 export function updateAnomalyStatus(plantId: number, eventId: number, status: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED') {
   return apiClient<ApiResponse<UpdateAnomalyStatusResponse>>(`/api/v1/plants/${plantId}/anomalies/${eventId}/status`, {
     method: 'PATCH',
@@ -112,4 +116,35 @@ export function updateAnomalyStatus(plantId: number, eventId: number, status: 'O
 
 export function getPlants() {
   return apiClient<ApiResponse<Plant[]>>('/api/v1/plants')
+}
+
+/** API `panelCount` 필수 충족용 — 대략 450W/패널 가정 */
+export function estimatePanelCountFromCapacityKw(capacityKw: number): number {
+  return Math.max(1, Math.round((capacityKw * 1000) / 450))
+}
+
+export type CreatePlantBody = {
+  name: string
+  location: string
+  capacityKw: number
+  panelCount: number
+  inverterModel: string
+  sensorSerialNumber?: string | null
+}
+
+export function createPlant(body: CreatePlantBody) {
+  const payload = {
+    name: body.name,
+    location: body.location,
+    capacityKw: body.capacityKw,
+    panelCount: body.panelCount,
+    inverterModel: body.inverterModel,
+    ...(body.sensorSerialNumber?.trim()
+      ? { sensorSerialNumber: body.sensorSerialNumber.trim() }
+      : {}),
+  }
+  return apiClient<ApiResponse<Plant>>('/api/v1/plants', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
 }

@@ -67,6 +67,15 @@
   font-weight: 700;
 }
 
+.unitControls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.unitControls button:disabled.unitActive {
+  opacity: 1;
+}
+
 .summaryGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -214,131 +223,12 @@
   margin-left: auto;
 }
 
-.forecastChart {
-  position: relative;
-  height: 284px;
-  padding: 20px 24px 36px 56px;
+.forecastEChartWrap {
+  padding: 8px 16px 16px;
 }
 
-.forecastChart::before {
-  position: absolute;
-  top: 68px;
-  right: 24px;
-  bottom: 56px;
-  left: 56px;
-  background:
-    repeating-linear-gradient(to bottom, #f5f3ef 0 1px, transparent 1px 47px),
-    repeating-linear-gradient(to right, transparent 0 calc(33.333% - 1px), #f5f3ef calc(33.333% - 1px) 33.333%);
-  content: '';
-}
-
-.forecastChart svg {
-  position: relative;
-  z-index: 1;
-  display: block;
-  width: 100%;
-  height: 232px;
-}
-
-.confidenceBand {
-  fill: url('#confidenceArea');
-}
-
-.actualLine,
-.predictedLine {
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.actualLine {
-  stroke: #1d9e75;
-  stroke-width: 2.5;
-}
-
-.predictedLine {
-  stroke: rgba(24, 95, 165, 0.85);
-  stroke-width: 2;
-}
-
-.nowLine {
-  stroke: rgba(180, 178, 169, 0.6);
-  stroke-width: 1;
-}
-
-.currentMarker {
-  position: absolute;
-  top: 48px;
-  left: 136px;
-  color: #888780;
-  font-size: 8px;
-  font-weight: 500;
-}
-
-.yAxis {
-  position: absolute;
-  top: 64px;
-  bottom: 58px;
-  left: 28px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  color: #c4c2bb;
-  font-size: 9px;
-}
-
-.xAxis {
-  position: absolute;
-  right: 24px;
-  bottom: 24px;
-  left: 42px;
-  display: flex;
-  justify-content: space-between;
-  color: #c4c2bb;
-  font-size: 9px;
-}
-
-.legend {
-  position: absolute;
-  bottom: 2px;
-  left: 44px;
-  display: flex;
-  gap: 72px;
-  color: #5f5e5a;
-  font-size: 9px;
-}
-
-.legend span {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.legend i {
-  display: inline-block;
-  flex: 0 0 auto;
-}
-
-.actualDot,
-.predictedDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.actualDot {
-  background: #1d9e75;
-}
-
-.predictedDot {
-  background: #185fa5;
-}
-
-.bandKey {
-  width: 14px;
-  height: 8px;
-  border-radius: 2px;
-  background: rgba(24, 95, 165, 0.2);
+.forecastPageEChart {
+  height: 220px;
 }
 
 .detailGrid {
@@ -575,10 +465,6 @@
 
   .summaryGrid {
     gap: 12px;
-  }
-
-  .legend {
-    gap: 16px;
   }
 
   .weatherGrid {

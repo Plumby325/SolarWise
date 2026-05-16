@@ -1,11 +1,11 @@
 import { useEffect, useId, useState } from 'react'
-import type { NewPlantPayload } from '@/shared/utils/localClientPlants'
+import type { NewPlantPayload } from '@/features/settings/plantRegisterTypes'
 import styles from './PlantRegisterModal.module.css'
 
 export type PlantRegisterModalProps = {
   isOpen: boolean
   onClose: () => void
-  onComplete?: (payload: NewPlantPayload) => void
+  onComplete?: (payload: NewPlantPayload) => void | Promise<void>
 }
 
 const SIDO_OPTIONS = [
@@ -61,6 +61,7 @@ export function PlantRegisterModal({ isOpen, onClose, onComplete }: PlantRegiste
   const titleId = useId()
   const [step, setStep] = useState<1 | 2>(1)
   const [formError, setFormError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [name, setName] = useState('')
   const [sido, setSido] = useState('')
@@ -84,6 +85,7 @@ export function PlantRegisterModal({ isOpen, onClose, onComplete }: PlantRegiste
     setInstallYear('')
     setInverterModel('')
     setSensorSerial('')
+    setIsSubmitting(false)
   }, [isOpen])
 
   useEffect(() => {
@@ -91,13 +93,13 @@ export function PlantRegisterModal({ isOpen, onClose, onComplete }: PlantRegiste
       return
     }
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && !isSubmitting) {
         onClose()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose])
+  }, [isOpen, isSubmitting, onClose])
 
   if (!isOpen) {
     return null
@@ -138,7 +140,10 @@ export function PlantRegisterModal({ isOpen, onClose, onComplete }: PlantRegiste
     setStep(2)
   }
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
+    if (isSubmitting) {
+      return
+    }
     if (!inverterModel.trim()) {
       setFormError('인버터 모델을 입력해 주세요.')
       return
@@ -151,23 +156,35 @@ export function PlantRegisterModal({ isOpen, onClose, onComplete }: PlantRegiste
     }
     const cap = Number(capacityKw)
     setFormError('')
-    onComplete?.({
-      name: name.trim(),
-      sido,
-      sigungu,
-      capacityKw: cap,
-      installYear: Number(installYear),
-      inverterModel: inverterModel.trim(),
-      sensorSerial: sensorSerial.trim(),
-    })
-    onClose()
+    try {
+      setIsSubmitting(true)
+      await onComplete?.({
+        name: name.trim(),
+        sido,
+        sigungu,
+        capacityKw: cap,
+        installYear: Number(installYear),
+        inverterModel: inverterModel.trim(),
+        sensorSerial: sensorSerial.trim(),
+      })
+      onClose()
+    } catch (submitErr) {
+      const msg = submitErr instanceof Error ? submitErr.message : '등록에 실패했습니다.'
+      setFormError(msg)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
     <div
       className={styles.overlay}
       role="presentation"
-      onClick={onClose}
+      onClick={() => {
+        if (!isSubmitting) {
+          onClose()
+        }
+      }}
     >
       <div
         className={styles.dialog}
@@ -181,7 +198,7 @@ export function PlantRegisterModal({ isOpen, onClose, onComplete }: PlantRegiste
           <p className={styles.subtitle}>
             {step === 1 ? '발전소 기본 정보를 입력해주세요.' : 'Step 2 / 2 — 설비 정보'}
           </p>
-          <button className={styles.closeBtn} type="button" aria-label="닫기" onClick={onClose}>
+          <button className={styles.closeBtn} type="button" aria-label="닫기" disabled={isSubmitting} onClick={onClose}>
             ✕
           </button>
         </header>
@@ -369,20 +386,28 @@ export function PlantRegisterModal({ isOpen, onClose, onComplete }: PlantRegiste
         <footer className={styles.footer}>
           {step === 1 ? (
             <>
-              <button className={styles.btnSecondary} type="button" onClick={onClose}>
+              <button className={styles.btnSecondary} type="button" disabled={isSubmitting} onClick={onClose}>
                 취소
               </button>
-              <button className={styles.btnPrimary} type="button" onClick={handleNext}>
+              <button className={styles.btnPrimary} type="button" disabled={isSubmitting} onClick={handleNext}>
                 다음 단계 →
               </button>
             </>
           ) : (
             <>
-              <button className={styles.btnSecondary} type="button" onClick={() => { setFormError(''); setStep(1) }}>
+              <button
+                className={styles.btnSecondary}
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => {
+                  setFormError('')
+                  setStep(1)
+                }}
+              >
                 ← 이전
               </button>
-              <button className={styles.btnSuccess} type="button" onClick={handleComplete}>
-                ✓ 등록 완료
+              <button className={styles.btnSuccess} type="button" disabled={isSubmitting} onClick={() => void handleComplete()}>
+                {isSubmitting ? '등록 중…' : '✓ 등록 완료'}
               </button>
             </>
           )}

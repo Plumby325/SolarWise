@@ -232,12 +232,15 @@ export function AnomalyDetectionMainPage() {
     setErrorMessage('')
 
     updateAnomalyStatus(defaultPlantId, selectedEvent.eventId, 'ACKNOWLEDGED')
-      .then((response) => {
-        setEvents((currentEvents) =>
-          currentEvents.map((event) =>
-            event.eventId === response.data.eventId ? { ...event, status: response.data.status } : event,
-          ),
-        )
+      .then(() => getAnomalies(defaultPlantId, 1000))
+      .then((refresh) => {
+        setEvents(refresh.data)
+        setSelectedEventId((currentId) => {
+          if (currentId && refresh.data.some((e) => e.eventId === currentId)) {
+            return currentId
+          }
+          return refresh.data[0]?.eventId ?? null
+        })
       })
       .catch((error) => {
         setErrorMessage(error instanceof Error ? error.message : '확인 완료 처리에 실패했습니다.')
