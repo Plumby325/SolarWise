@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { DashboardSidebar } from '@/shared/layout/DashboardSidebar'
 import { getSessionUser } from '@/shared/utils/sessionUser'
 import styles from './NotificationSettingsPage.module.css'
@@ -40,6 +41,7 @@ function filterSentMailEvents(events: readonly MailEvent[]) {
 }
 
 export function NotificationSettingsPage() {
+  const navigate = useNavigate()
   const [isEmailEnabled, setIsEmailEnabled] = useState(true)
   const [selectedSeverity, setSelectedSeverity] = useState<Severity>('MEDIUM')
   const [selectedTypes, setSelectedTypes] = useState<AlertTypeId[]>(['power', 'vision'])
@@ -171,7 +173,9 @@ export function NotificationSettingsPage() {
                 <h2 id="mail-history-title">메일 발송 이력</h2>
                 <p>최근 발송된 알림 이력</p>
               </div>
-              <button type="button">전체 보기 →</button>
+              <button type="button" onClick={() => navigate('/settings/notifications/history')}>
+                전체 보기 →
+              </button>
             </div>
 
             <div className={styles.historyList}>

@@ -3,12 +3,14 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { getForecast, getMeasurements } from '@/api'
 import type { ForecastPoint, MeasurementPoint } from '@/api'
 import {
+  FORECAST_CHART_DUMMY_MESSAGE,
   FORECAST_BRIDGE_MEASUREMENT_WINDOW_MS,
   type ForecastHorizonId,
   buildForecastComboChartOption,
   createDummyBridgeMeasurements,
   createDummyForecastSeries,
   filterForecastsByHorizon,
+  isForecastChartDummyForced,
 } from '@/shared/charts/forecastComboChartOption'
 import { useDefaultPlant } from '@/shared/hooks/useDefaultPlant'
 import { DashboardSidebar } from '@/shared/layout/DashboardSidebar'
@@ -69,6 +71,7 @@ const weatherCards = [
 
 export function PowerForecastPage() {
   const { defaultPlantId } = useDefaultPlant()
+  const isDummyForced = isForecastChartDummyForced()
   const [forecastHorizon, setForecastHorizon] = useState<ForecastHorizonId>('2d')
   const [forecasts, setForecasts] = useState<ForecastPoint[]>([])
   const [forecastError, setForecastError] = useState('')
@@ -79,6 +82,11 @@ export function PowerForecastPage() {
     if (!defaultPlantId) {
       setForecasts([])
       setForecastError('발전소 데이터 없음')
+      return
+    }
+    if (isDummyForced) {
+      setForecasts(createDummyForecastSeries())
+      setForecastError(FORECAST_CHART_DUMMY_MESSAGE)
       return
     }
 
@@ -111,12 +119,17 @@ export function PowerForecastPage() {
       isActive = false
       window.clearInterval(timer)
     }
-  }, [defaultPlantId])
+  }, [defaultPlantId, isDummyForced])
 
   useEffect(() => {
     if (!defaultPlantId) {
       setBridgeMeasurements([])
       setBridgeError('발전소 데이터 없음')
+      return
+    }
+    if (isDummyForced) {
+      setBridgeMeasurements(createDummyBridgeMeasurements())
+      setBridgeError(FORECAST_CHART_DUMMY_MESSAGE)
       return
     }
 
@@ -152,7 +165,7 @@ export function PowerForecastPage() {
       isActive = false
       window.clearInterval(timer)
     }
-  }, [defaultPlantId])
+  }, [defaultPlantId, isDummyForced])
 
   const filteredForecasts = useMemo(
     () => filterForecastsByHorizon(forecasts, forecastHorizon),

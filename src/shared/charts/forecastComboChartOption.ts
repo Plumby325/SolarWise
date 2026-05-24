@@ -6,6 +6,7 @@ import { formatKoreanMonthDay } from '@/shared/utils/dateFormat'
 export const FORECAST_BRIDGE_MEASUREMENT_WINDOW_MS = 24 * 60 * 60 * 1000
 
 export const FORECAST_BRIDGE_TAIL_COUNT = 5
+export const FORECAST_ERROR_BAND_KW = 500
 
 export type ForecastHorizonId = 'today' | '2d' | '3d'
 
@@ -19,6 +20,12 @@ function formatChartDateLabel(value: string) {
 
 function roundChartValue(value: number) {
   return Number(value.toFixed(1))
+}
+
+function createBackcastFromActual(actualPowerKw: number, index: number, total: number) {
+  const ratio = total <= 1 ? 1 : index / (total - 1)
+  const bias = 1.06 - ratio * 0.04
+  return roundChartValue(actualPowerKw * bias)
 }
 
 function getPowerAxisMax(values: number[]) {
@@ -49,47 +56,58 @@ export function filterForecastsByHorizon(forecasts: ForecastPoint[], horizon: Fo
   return filtered.length > 0 ? filtered : forecasts
 }
 
-export function createDummyBridgeMeasurements(): MeasurementPoint[] {
-  const intervalMs = 60 * 60 * 1000
-  const durationMs = FORECAST_BRIDGE_MEASUREMENT_WINDOW_MS
-  const axisMax = Math.ceil(Date.now() / intervalMs) * intervalMs
-  const axisMin = axisMax - durationMs
-  const pointCount = Math.floor(durationMs / intervalMs) + 1
+/** `.env`에 `VITE_USE_FORECAST_CHART_DUMMY=true`면 API 대신 2선 테스트 더미를 강제 사용 */
+export function isForecastChartDummyForced(): boolean {
+  return import.meta.env.VITE_USE_FORECAST_CHART_DUMMY === 'true'
+}
 
-  return Array.from({ length: pointCount }, (_, index) => {
-    const ratio = pointCount === 1 ? 1 : index / (pointCount - 1)
-    const curve = Math.sin(ratio * Math.PI)
-    const powerKw = 1800 + curve * 7200 + Math.sin(index * 1.7) * 280
+export const FORECAST_CHART_DUMMY_MESSAGE = '2선 테스트 더미 데이터 표시 중'
+
+/** 실측(최근 5시간) + 예측(앞 3일, 6시간 간격) — 차트 2선 검증용 고정 값 */
+const DUMMY_ACTUAL_POWER_KW = [2900, 3600, 4300, 4700, 4400] as const
+const DUMMY_FORECAST_POWER_KW = [4200, 5100, 5600, 4900, 5300, 5800, 5200, 4700, 5000, 5500, 5100, 4600] as const
+
+export function createDummyForecastComboData(): {
+  bridgeMeasurements: MeasurementPoint[]
+  forecasts: ForecastPoint[]
+} {
+  const hourMs = 60 * 60 * 1000
+  const forecastIntervalMs = 6 * hourMs
+  const nowAligned = Math.floor(Date.now() / hourMs) * hourMs
+
+  const bridgeMeasurements = DUMMY_ACTUAL_POWER_KW.map((powerKw, index) => {
+    const hoursAgo = DUMMY_ACTUAL_POWER_KW.length - 1 - index
 
     return {
-      measuredAt: new Date(axisMin + intervalMs * index).toISOString(),
-      powerKw: Math.max(0, powerKw),
-      temperature: 22 + curve * 8,
-      irradiance: 180 + curve * 720,
-      humidity: 62 - curve * 18,
+      measuredAt: new Date(nowAligned - hoursAgo * hourMs).toISOString(),
+      powerKw,
+      temperature: 22 + index * 0.8,
+      irradiance: 500 + index * 60,
+      humidity: 48 - index,
     }
   })
+
+  const forecasts = DUMMY_FORECAST_POWER_KW.map((predicted_power_kw, index) => ({
+    target_time: new Date(nowAligned + hourMs + index * forecastIntervalMs).toISOString(),
+    predicted_power_kw,
+    confidence: Math.max(0.83, 0.94 - index * 0.01),
+    model_version: 'TEST-v1',
+    model_notes: 'LINE_TEST_2SERIES',
+  }))
+
+  return { bridgeMeasurements, forecasts }
+}
+
+export function createDummyBridgeMeasurements(): MeasurementPoint[] {
+  return createDummyForecastComboData().bridgeMeasurements
 }
 
 export function createDummyForecastSeries(): ForecastPoint[] {
-  const startTime = Date.now() + 60 * 60 * 1000
-  const intervalMs = 6 * 60 * 60 * 1000
-
-  return Array.from({ length: 8 }, (_, index) => {
-    const curve = Math.sin(((index % 4) + 1) / 5 * Math.PI)
-
-    return {
-      target_time: new Date(startTime + intervalMs * index).toISOString(),
-      predicted_power_kw: Math.max(0, 2600 + curve * 6200 - Math.floor(index / 4) * 350),
-      confidence: 0.9 - index * 0.015,
-      model_version: 'Dummy-XGBoost',
-      model_notes: 'API 데이터 없음 - 프론트 더미 데이터',
-    }
-  })
+  return createDummyForecastComboData().forecasts
 }
 
 /**
- * 대시보드·발전량 예측 공통: 실측(끝)·예측 선 결합 ECharts 옵션
+ * 대시보드·발전량 예측 공통: 실측/예측 2개 선 ECharts 옵션
  * `bridgeMeasurements`는 실시간 차트 범위와 별도로 가져온 고정 구간 계측만 사용할 것.
  */
 export function buildForecastComboChartOption(params: {
@@ -100,25 +118,33 @@ export function buildForecastComboChartOption(params: {
 }): EChartsCoreOption {
   const { bridgeMeasurements, forecasts, bridgeError, forecastError } = params
   const actualMeasurements = bridgeMeasurements.slice(-FORECAST_BRIDGE_TAIL_COUNT)
-  const latestActualMeasurement = actualMeasurements[actualMeasurements.length - 1]
   const hasForecastChartData = actualMeasurements.length > 0 || forecasts.length > 0
   const labels = [
     ...actualMeasurements.map((point) => formatChartDateLabel(point.measuredAt)),
     ...forecasts.map((point) => formatChartDateLabel(point.target_time)),
   ]
+  const historicalForecastData = actualMeasurements.map((point, index) =>
+    createBackcastFromActual(point.powerKw, index, actualMeasurements.length),
+  )
   const actualData = [
     ...actualMeasurements.map((point) => roundChartValue(point.powerKw)),
     ...forecasts.map(() => null),
   ]
-  const forecastData = [
-    ...actualMeasurements.slice(0, -1).map(() => null),
-    latestActualMeasurement ? roundChartValue(latestActualMeasurement.powerKw) : null,
-    ...forecasts.map((point) => roundChartValue(point.predicted_power_kw)),
-  ]
+  const forecastData = [...historicalForecastData, ...forecasts.map((point) => roundChartValue(point.predicted_power_kw))]
+  const forecastLowerBand = forecastData.map((value) => roundChartValue(Math.max(0, value - FORECAST_ERROR_BAND_KW)))
+  const forecastBandHeight = forecastData.map((value) => {
+    const lowerBound = Math.max(0, value - FORECAST_ERROR_BAND_KW)
+    const upperBound = value + FORECAST_ERROR_BAND_KW
+    return roundChartValue(upperBound - lowerBound)
+  })
   const chartValues = [
     ...actualMeasurements.map((point) => point.powerKw),
+    ...historicalForecastData,
+    ...forecasts.map((point) => Math.max(0, point.predicted_power_kw - FORECAST_ERROR_BAND_KW)),
     ...forecasts.map((point) => point.predicted_power_kw),
+    ...forecasts.map((point) => point.predicted_power_kw + FORECAST_ERROR_BAND_KW),
   ]
+  const currentIndex = actualMeasurements.length > 0 ? actualMeasurements.length - 1 : -1
 
   return {
     color: ['#1d9e75', '#185fa5'],
@@ -141,6 +167,7 @@ export function buildForecastComboChartOption(params: {
       valueFormatter: (value: unknown) => (typeof value === 'number' ? `${value} kW` : '-'),
     },
     legend: {
+      data: ['실제 발전량', '예측 발전량'],
       bottom: 0,
       left: 0,
       itemWidth: 8,
@@ -166,7 +193,7 @@ export function buildForecastComboChartOption(params: {
     },
     series: [
       {
-        name: '실측값',
+        name: '실제 발전량',
         type: 'line',
         smooth: true,
         symbol: 'none',
@@ -174,12 +201,46 @@ export function buildForecastComboChartOption(params: {
         data: actualData,
       },
       {
-        name: '예측값 (XGBoost)',
+        type: 'line',
+        stack: 'forecast-error-band',
+        symbol: 'none',
+        lineStyle: { opacity: 0 },
+        areaStyle: { opacity: 0 },
+        emphasis: { disabled: true },
+        tooltip: { show: false },
+        data: forecastLowerBand,
+      },
+      {
+        type: 'line',
+        stack: 'forecast-error-band',
+        symbol: 'none',
+        lineStyle: { opacity: 0 },
+        areaStyle: { color: 'rgba(24, 95, 165, 0.14)' },
+        emphasis: { disabled: true },
+        tooltip: { show: false },
+        data: forecastBandHeight,
+      },
+      {
+        name: '예측 발전량',
         type: 'line',
         smooth: true,
         symbol: 'none',
-        lineStyle: { width: 3 },
-        areaStyle: { color: 'rgba(24, 95, 165, 0.06)' },
+        lineStyle: { width: 3, type: 'dashed' },
+        markLine: currentIndex >= 0
+          ? {
+              symbol: 'none',
+              silent: true,
+              lineStyle: { color: '#8e8c86', width: 1.5 },
+              label: {
+                show: true,
+                formatter: '현재',
+                position: 'insideEndBottom',
+                color: '#8e8c86',
+                fontSize: 11,
+              },
+              data: [{ xAxis: currentIndex }],
+            }
+          : undefined,
         data: forecastData,
       },
     ],

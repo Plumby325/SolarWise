@@ -416,7 +416,7 @@ export function AnomalyDetectionMainPage() {
           <section className={styles.detailPanel} aria-labelledby="event-detail-title">
             {selectedEvent ? (
               <>
-                <div className={styles.detailHero}>
+                <div className={[styles.detailHero, styles[getEventTone(selectedEvent)]].join(' ')}>
                   <div className={styles.eventTags}>
                     <span>{selectedEvent.severity}</span>
                     <small>{selectedEvent.type}</small>

@@ -207,7 +207,7 @@ export function AnomalyDetailPage() {
               </div>
             </div>
 
-            <article className={styles.eventSummary}>
+            <article className={[styles.eventSummary, styles[severityTone]].join(' ')}>
               <h3>{event?.summary ?? (isLoading ? '이벤트 상세를 불러오는 중입니다.' : '이벤트를 찾을 수 없습니다.')}</h3>
               <p>{errorMessage || (event ? `${event.severity} · ${event.status}` : '상세 조회할 이벤트를 선택해 주세요.')}</p>
             </article>
@@ -223,7 +223,7 @@ export function AnomalyDetailPage() {
                   <span>심각도</span>
                   <strong className={styles[severityTone]}>{event?.severity ?? '-'}</strong>
                 </div>
-                <b>{event?.status ?? '-'}</b>
+                <b className={event?.status ? styles[`status${event.status}`] : undefined}>{event?.status ?? '-'}</b>
               </div>
             </section>
 

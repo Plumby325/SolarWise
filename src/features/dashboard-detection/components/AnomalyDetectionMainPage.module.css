@@ -649,16 +649,42 @@
 }
 
 .detailHero {
+  --hero-tone: #e24b4a;
   position: relative;
   min-height: 72px;
   padding: 16px 24px 0;
-  border-left: 4px solid #e24b4a;
-  border-bottom: 1px solid #ffe4e4;
-  background: #fef2f2;
+  border-left: 4px solid var(--hero-tone);
+  border-bottom: 1px solid color-mix(in srgb, var(--hero-tone) 22%, #ffffff);
+  background: color-mix(in srgb, var(--hero-tone) 8%, #ffffff);
+  color: #0d1b2a;
 }
 
-.detailHero .eventTags {
-  color: #e24b4a;
+.detailHero.red {
+  --hero-tone: #e24b4a;
+}
+
+.detailHero.amber {
+  --hero-tone: #ba7517;
+}
+
+.detailHero.blue {
+  --hero-tone: #185fa5;
+}
+
+.detailHero.muted {
+  --hero-tone: #888780;
+  border-bottom-color: #eceae4;
+  background: #f8f9fa;
+}
+
+.detailHero .eventTags span {
+  color: var(--hero-tone);
+  background: color-mix(in srgb, var(--hero-tone) 12%, #ffffff);
+}
+
+.detailHero .eventTags small {
+  color: #888780;
+  background: #f8f9fa;
 }
 
 .detailHero time {
@@ -674,15 +700,15 @@
   right: 24px;
   bottom: 14px;
   padding: 5px 8px;
-  border: 1px solid #fca5a5;
+  border: 1px solid color-mix(in srgb, var(--hero-tone) 40%, #ffffff);
   border-radius: 999px;
-  color: #e24b4a;
-  background: #fef2f2;
+  background: color-mix(in srgb, var(--hero-tone) 10%, #ffffff);
   font-size: 9px;
 }
 
 .detailHero h2 {
   margin-top: 8px;
+  color: #0d1b2a;
   font-size: 15px;
 }
 

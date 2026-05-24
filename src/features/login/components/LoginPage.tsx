@@ -150,9 +150,9 @@ export function LoginPage() {
             </div>
 
             <div className={styles.supportRow}>
-              <a href="/" onClick={(event: { preventDefault(): void }) => event.preventDefault()}>
+              <Link to="/finding-password">
                 비밀번호를 잊으셨나요?
-              </a>
+              </Link>
             </div>
 
             {submitError ? (
