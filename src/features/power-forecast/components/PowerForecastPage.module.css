@@ -242,6 +242,19 @@
   min-height: 492px;
 }
 
+.shapPanel {
+  min-height: auto;
+  align-self: start;
+}
+
+.shapEChartWrap {
+  padding: 16px 20px 20px;
+}
+
+.shapEChart {
+  height: 128px;
+}
+
 .shapList {
   padding: 12px 20px 20px;
 }

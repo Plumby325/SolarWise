@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { EChartsCoreOption } from 'echarts/core'
-import { getAnomalies, getDashboardSummary, getForecast, getMeasurements, getPlants } from '@/api'
-import type { AnomalyEvent, DashboardSummary, ForecastPoint, MeasurementPoint, Plant } from '@/api'
-import { DashboardSidebar } from '@/shared/layout/DashboardSidebar'
+import { getAnomalies, getDashboardSummary, getMeasurements, getPlants } from '@/api'
+import type { AnomalyEvent, DashboardSummary, MeasurementPoint, Plant, TimelineAnomalyMarker, TimelineRange } from '@/api'
+import { DemoSimulationToolbar } from '@/features/dashboard/components/DemoSimulationToolbar'
+import { TimelineAnomalyPanel } from '@/features/dashboard/components/TimelineAnomalyPanel'
+import { DashboardSidebar, SIMULATION_CHANGE_EVENT } from '@/shared/layout/DashboardSidebar'
 import { DashboardSettingsMenu } from '@/shared/layout/DashboardSettingsMenu'
 import {
-  FORECAST_BRIDGE_MEASUREMENT_WINDOW_MS,
-  buildForecastComboChartOption,
-  createDummyBridgeMeasurements,
-  createDummyForecastSeries,
-} from '@/shared/charts/forecastComboChartOption'
+  buildDashboardTimelineChartOption,
+  extractMarkerFromChartClick,
+  type TimelineChartClickParams,
+} from '@/shared/charts/dashboardTimelineChartOption'
+import { useDashboardTimeline } from '@/shared/hooks/useDashboardTimeline'
 import { EChart } from '@/shared/ui/EChart'
 import { formatKoreanDateTime, formatLocalDateTimeForApi, formatRelativeTime } from '@/shared/utils/dateFormat'
 import styles from './DashboardPage.module.css'
@@ -22,6 +24,12 @@ const generationRanges = [
 ] as const
 
 type GenerationRangeId = (typeof generationRanges)[number]['id']
+
+const timelineRanges: Array<{ id: TimelineRange; label: string }> = [
+  { id: 'DAY', label: 'DAY' },
+  { id: 'WEEK', label: 'WEEK' },
+  { id: 'MONTH', label: 'MONTH' },
+]
 
 const featureContributions = [
   { label: '일사량', value: 0.52, tone: 'blue', color: '#185fa5' },
@@ -145,15 +153,36 @@ export function DashboardPage() {
   const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null)
   const [summaryError, setSummaryError] = useState('')
   const [measurements, setMeasurements] = useState<MeasurementPoint[]>([])
-  const [forecasts, setForecasts] = useState<ForecastPoint[]>([])
   const [anomalies, setAnomalies] = useState<AnomalyEvent[]>([])
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
   const [notificationError, setNotificationError] = useState('')
   const [measurementError, setMeasurementError] = useState('')
-  const [forecastError, setForecastError] = useState('')
-  const [forecastBridgeMeasurements, setForecastBridgeMeasurements] = useState<MeasurementPoint[]>([])
-  const [forecastBridgeError, setForecastBridgeError] = useState('')
+  const [selectedMarker, setSelectedMarker] = useState<TimelineAnomalyMarker | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const {
+    range: timelineRange,
+    setRange: setTimelineRange,
+    timeline,
+    playback,
+    isLoading: isTimelineLoading,
+    error: timelineError,
+    refresh: refreshTimeline,
+    virtualNow,
+  } = useDashboardTimeline(selectedPlantId, refreshKey)
+
+  useEffect(() => {
+    const handleSimulationChange = () => {
+      void refreshTimeline()
+      setRefreshKey((key) => key + 1)
+    }
+
+    window.addEventListener(SIMULATION_CHANGE_EVENT, handleSimulationChange)
+
+    return () => {
+      window.removeEventListener(SIMULATION_CHANGE_EVENT, handleSimulationChange)
+    }
+  }, [refreshTimeline])
+
   const selectedPlant = plants.find((plant) => plant.plantId === selectedPlantId)
   const activeAnomalies = anomalies.filter((anomaly) => anomaly.status !== 'RESOLVED')
   const hasNotifications = activeAnomalies.length > 0
@@ -241,6 +270,11 @@ export function DashboardPage() {
       return
     }
 
+    if (playback?.running) {
+      setMeasurementError('시연 재생 중 · 실시간 차트는 타임라인 패널을 참고하세요')
+      return
+    }
+
     let isActive = true
 
     const fetchMeasurements = () => {
@@ -275,7 +309,7 @@ export function DashboardPage() {
       isActive = false
       window.clearInterval(pollingTimer)
     }
-  }, [refreshKey, selectedGenerationRange, selectedPlantId])
+  }, [playback?.running, refreshKey, selectedGenerationRange, selectedPlantId])
 
   useEffect(() => {
     if (!selectedPlantId) {
@@ -318,89 +352,6 @@ export function DashboardPage() {
 
   useEffect(() => {
     if (!selectedPlantId) {
-      setForecasts([])
-      setForecastError('발전소 데이터 없음')
-      return
-    }
-
-    let isActive = true
-
-    const fetchForecasts = () => {
-      getForecast(selectedPlantId)
-        .then((forecastResponse) => {
-          if (!isActive) {
-            return
-          }
-
-          const hasBackendData = forecastResponse.data.forecast_series.length > 0
-          setForecasts(hasBackendData ? forecastResponse.data.forecast_series : createDummyForecastSeries())
-          setForecastError(hasBackendData ? '' : '예측 API 데이터 없음 · 더미 데이터 표시 중')
-        })
-        .catch((error) => {
-          if (!isActive) {
-            return
-          }
-
-          console.error('AI 발전량 예측 조회 실패:', error)
-          setForecasts(createDummyForecastSeries())
-          setForecastError(`${error instanceof Error ? error.message : '예측 API 조회 실패'} · 더미 데이터 표시 중`)
-        })
-    }
-
-    fetchForecasts()
-    const pollingTimer = window.setInterval(fetchForecasts, 30000)
-
-    return () => {
-      isActive = false
-      window.clearInterval(pollingTimer)
-    }
-  }, [refreshKey, selectedPlantId])
-
-  useEffect(() => {
-    if (!selectedPlantId) {
-      setForecastBridgeMeasurements([])
-      setForecastBridgeError('발전소 데이터 없음')
-      return
-    }
-
-    let isActive = true
-
-    const fetchForecastBridge = () => {
-      const to = new Date()
-      const from = new Date(to.getTime() - FORECAST_BRIDGE_MEASUREMENT_WINDOW_MS)
-
-      getMeasurements(selectedPlantId, formatLocalDateTimeForApi(from), formatLocalDateTimeForApi(to))
-        .then((measurementResponse) => {
-          if (!isActive) {
-            return
-          }
-
-          const hasBackendData = measurementResponse.data.series.length > 0
-          setForecastBridgeMeasurements(hasBackendData ? measurementResponse.data.series : createDummyBridgeMeasurements())
-          setForecastBridgeError(hasBackendData ? '' : '계측 API 데이터 없음 · 더미 데이터 표시 중')
-        })
-        .catch((error) => {
-          if (!isActive) {
-            return
-          }
-
-          console.error('예측 차트용 계측 조회 실패:', error)
-          setForecastBridgeMeasurements(createDummyBridgeMeasurements())
-          setForecastBridgeError(`${error instanceof Error ? error.message : '계측 API 조회 실패'} · 더미 데이터 표시 중`)
-        })
-    }
-
-    fetchForecastBridge()
-    const bridgeTimer = window.setInterval(fetchForecastBridge, 5000)
-
-    return () => {
-      isActive = false
-      window.clearInterval(bridgeTimer)
-    }
-  }, [refreshKey, selectedPlantId])
-
-  useEffect(() => {
-    if (!selectedPlantId) {
       setAnomalies([])
       return
     }
@@ -436,6 +387,7 @@ export function DashboardPage() {
       window.clearInterval(pollingTimer)
     }
   }, [refreshKey, selectedPlantId])
+
 
   const generationChartOption = useMemo<EChartsCoreOption>(() => {
     const powerValues = measurements.map((point) => point.powerKw)
@@ -503,15 +455,24 @@ export function DashboardPage() {
     }
   }, [measurementError, measurements, selectedGenerationRange])
 
-  const forecastChartOption = useMemo<EChartsCoreOption>(
-    () =>
-      buildForecastComboChartOption({
-        bridgeMeasurements: forecastBridgeMeasurements,
-        forecasts,
-        bridgeError: forecastBridgeError,
-        forecastError,
-      }),
-    [forecastBridgeError, forecastBridgeMeasurements, forecastError, forecasts],
+  const handleTimelineChartClick = useCallback((params: unknown) => {
+    const marker = extractMarkerFromChartClick(params as TimelineChartClickParams)
+
+    if (marker) {
+      setSelectedMarker(marker)
+    }
+  }, [])
+
+  const timelineChartOption = useMemo<EChartsCoreOption>(
+    () => buildDashboardTimelineChartOption(timeline, timelineError),
+    [timeline, timelineError],
+  )
+
+  const timelineChartEvents = useMemo(
+    () => ({
+      click: handleTimelineChartClick,
+    }),
+    [handleTimelineChartClick],
   )
 
   const shapChartOption = useMemo<EChartsCoreOption>(() => ({
@@ -585,7 +546,10 @@ export function DashboardPage() {
               <span aria-hidden="true" />
               정상 운영
             </span>
-            <time>마지막 업데이트 · 14:32:05</time>
+            <time>
+              가상 시각 · {virtualNow ? formatKoreanDateTime(virtualNow) : '—'}
+              {playback?.running ? ' · 재생 중' : ''}
+            </time>
           </div>
 
           <div className={styles.headerActions}>
@@ -710,35 +674,77 @@ export function DashboardPage() {
             />
           </section>
 
-          <section className={styles.panel} aria-labelledby="forecast-title">
+          <section className={styles.panel} aria-labelledby="timeline-title">
             <div className={styles.panelHeader}>
               <div>
                 <div className={styles.titleRow}>
-                  <h2 id="forecast-title">AI 발전량 예측 (2~3일)</h2>
-                  <span className={styles.aiBadge}>AI Powered</span>
+                  <h2 id="timeline-title">시계열 시뮬레이션 (실측·예측·괴리)</h2>
+                  <span className={styles.aiBadge}>1s fixed</span>
+                  {playback?.running ? <span className={styles.playbackBadge}>재생 중</span> : null}
                 </div>
-                <p>{forecastError || 'XGBoost 기반 · 백엔드 예측 API 연동'}</p>
+                <p>
+                  {timelineError || (isTimelineLoading ? '타임라인 로딩 중…' : '가상 시간 기준 · 이상 마커 클릭 시 상세')}
+                </p>
+              </div>
+              <div className={styles.segmentedControl} aria-label="타임라인 범위">
+                {timelineRanges.map((rangeOption) => (
+                  <button
+                    key={rangeOption.id}
+                    className={timelineRange === rangeOption.id ? styles.segmentActive : ''}
+                    type="button"
+                    aria-pressed={timelineRange === rangeOption.id}
+                    onClick={() => setTimelineRange(rangeOption.id)}
+                  >
+                    {rangeOption.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className={styles.forecastBody}>
-              <div className={styles.forecastChart}>
+            <DemoSimulationToolbar
+              plantId={selectedPlantId}
+              isRunning={playback?.running ?? false}
+              onPlaybackChange={() => {
+                void refreshTimeline()
+                setRefreshKey((key) => key + 1)
+              }}
+              onTriggerComplete={() => {
+                void refreshTimeline()
+                setRefreshKey((key) => key + 1)
+              }}
+            />
+
+            <div className={styles.timelineBody}>
+              <div className={styles.timelineChart}>
                 <EChart
-                  ariaLabel="백엔드 예측 데이터 기반 AI 발전량 예측 차트"
+                  ariaLabel="대시보드 시계열 시뮬레이션 차트"
                   className={styles.forecastEChart}
-                  option={forecastChartOption}
+                  option={timelineChartOption}
+                  onEvents={timelineChartEvents}
                 />
               </div>
 
-              <aside className={styles.shapCard} aria-label="SHAP 피처 기여도">
-                <h3>SHAP 피처 기여도</h3>
-                <p>각 피처가 예측에 미친 영향</p>
-                <EChart
-                  ariaLabel="SHAP 피처 기여도 차트"
-                  className={styles.shapEChart}
-                  option={shapChartOption}
+              {selectedMarker && selectedPlantId ? (
+                <TimelineAnomalyPanel
+                  plantId={selectedPlantId}
+                  marker={selectedMarker}
+                  onClose={() => setSelectedMarker(null)}
+                  onStatusUpdated={() => {
+                    void refreshTimeline()
+                    setRefreshKey((key) => key + 1)
+                  }}
                 />
-              </aside>
+              ) : (
+                <aside className={styles.shapCard} aria-label="SHAP 피처 기여도">
+                  <h3>SHAP 피처 기여도</h3>
+                  <p>각 피처가 예측에 미친 영향</p>
+                  <EChart
+                    ariaLabel="SHAP 피처 기여도 차트"
+                    className={styles.shapEChart}
+                    option={shapChartOption}
+                  />
+                </aside>
+              )}
             </div>
           </section>
 

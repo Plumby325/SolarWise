@@ -223,6 +223,23 @@ export function AnomalyDetectionMainPage() {
     }
   }, [])
 
+  const refreshEventsAfterStatusChange = () => {
+    if (!defaultPlantId) {
+      return Promise.resolve()
+    }
+
+    return getAnomalies(defaultPlantId, 1000).then((refresh) => {
+      setEvents(refresh.data)
+      setSelectedEventId((currentId) => {
+        if (currentId && refresh.data.some((e) => e.eventId === currentId)) {
+          return currentId
+        }
+
+        return refresh.data[0]?.eventId ?? null
+      })
+    })
+  }
+
   const handleAcknowledge = () => {
     if (!defaultPlantId || !selectedEvent || selectedEvent.status === 'ACKNOWLEDGED' || selectedEvent.status === 'RESOLVED') {
       return
@@ -232,18 +249,27 @@ export function AnomalyDetectionMainPage() {
     setErrorMessage('')
 
     updateAnomalyStatus(defaultPlantId, selectedEvent.eventId, 'ACKNOWLEDGED')
-      .then(() => getAnomalies(defaultPlantId, 1000))
-      .then((refresh) => {
-        setEvents(refresh.data)
-        setSelectedEventId((currentId) => {
-          if (currentId && refresh.data.some((e) => e.eventId === currentId)) {
-            return currentId
-          }
-          return refresh.data[0]?.eventId ?? null
-        })
-      })
+      .then(() => refreshEventsAfterStatusChange())
       .catch((error) => {
         setErrorMessage(error instanceof Error ? error.message : '확인 완료 처리에 실패했습니다.')
+      })
+      .finally(() => {
+        setIsUpdating(false)
+      })
+  }
+
+  const handleResolve = () => {
+    if (!defaultPlantId || !selectedEvent || selectedEvent.status === 'RESOLVED') {
+      return
+    }
+
+    setIsUpdating(true)
+    setErrorMessage('')
+
+    updateAnomalyStatus(defaultPlantId, selectedEvent.eventId, 'RESOLVED')
+      .then(() => refreshEventsAfterStatusChange())
+      .catch((error) => {
+        setErrorMessage(error instanceof Error ? error.message : '조치 완료 처리에 실패했습니다.')
       })
       .finally(() => {
         setIsUpdating(false)
@@ -449,6 +475,13 @@ export function AnomalyDetectionMainPage() {
                       disabled={isUpdating || selectedEvent.status === 'ACKNOWLEDGED' || selectedEvent.status === 'RESOLVED'}
                     >
                       {selectedEvent.status === 'ACKNOWLEDGED' || selectedEvent.status === 'RESOLVED' ? '✓ 확인 완료됨' : '✓ 확인 완료 처리'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResolve}
+                      disabled={isUpdating || selectedEvent.status === 'RESOLVED'}
+                    >
+                      {selectedEvent.status === 'RESOLVED' ? '✓ 조치 완료됨' : '조치 완료'}
                     </button>
                     <Link to={`/anomaly-detection/detail?eventId=${selectedEvent.eventId}`}>상세 보기 →</Link>
                   </div>

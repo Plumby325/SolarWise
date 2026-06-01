@@ -54,12 +54,11 @@ const summaryCards = [
   },
 ] as const
 
-const shapFactors = [
-  { title: '일사량', description: '맑음 예보로 발전에 긍정적', value: '+0.52', size: '52%', tone: 'blue', direction: '↑' },
-  { title: '운량', description: '오후 구름 증가로 출력 감소 예상', value: '-0.38', size: '38%', tone: 'red', direction: '↓' },
-  { title: '기온', description: '적정 온도 유지로 효율 양호', value: '+0.21', size: '21%', tone: 'green', direction: '↑' },
-  { title: '패널 상태', description: '오염 지수 소폭 영향', value: '-0.12', size: '12%', tone: 'amber', direction: '↓' },
-  { title: '습도', description: '낮은 습도 유지', value: '+0.08', size: '8%', tone: 'green', direction: '↑' },
+const featureContributions = [
+  { label: '일사량', value: 0.52, color: '#185fa5' },
+  { label: '기온', value: 0.28, color: '#1d9e75' },
+  { label: '운량', value: -0.15, color: '#e24b4a' },
+  { label: '패널 상태', value: 0.1, color: '#ba7517' },
 ] as const
 
 const weatherCards = [
@@ -182,6 +181,64 @@ export function PowerForecastPage() {
       }),
     [bridgeError, bridgeMeasurements, forecastError, filteredForecasts],
   )
+  const shapChartOption = useMemo<EChartsCoreOption>(() => ({
+    grid: { top: 4, right: 58, bottom: 0, left: 58 },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      valueFormatter: (value: unknown) => (typeof value === 'number' ? value.toFixed(2) : '-'),
+    },
+    xAxis: {
+      type: 'value',
+      min: 0,
+      max: 0.6,
+      show: false,
+    },
+    yAxis: {
+      type: 'category',
+      inverse: true,
+      data: featureContributions.map((feature) => feature.label),
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: {
+        color: '#5f5e5a',
+        fontSize: 10,
+        fontWeight: 600,
+      },
+    },
+    series: [
+      {
+        name: 'SHAP 기여도',
+        type: 'bar',
+        barWidth: 14,
+        barGap: '-100%',
+        silent: true,
+        tooltip: { show: false },
+        data: featureContributions.map(() => ({
+          value: 0.52,
+          itemStyle: { color: '#eceae4', borderRadius: 3 },
+        })),
+      },
+      {
+        name: '기여도',
+        type: 'bar',
+        barWidth: 14,
+        data: featureContributions.map((feature) => ({
+          value: Math.abs(feature.value),
+          rawValue: feature.value,
+          itemStyle: { color: feature.color, borderRadius: 3 },
+          label: {
+            show: true,
+            position: 'right',
+            formatter: feature.value > 0 ? `+${feature.value.toFixed(2)}` : feature.value.toFixed(2),
+            color: feature.color,
+            fontSize: 9,
+            fontWeight: 700,
+          },
+        })),
+      },
+    ],
+  }), [])
 
   return (
     <div className={styles.page}>
@@ -256,30 +313,19 @@ export function PowerForecastPage() {
         </section>
 
         <div className={styles.detailGrid}>
-          <section className={styles.panel} aria-labelledby="shap-title">
+          <section className={[styles.panel, styles.shapPanel].join(' ')} aria-labelledby="shap-title">
             <div className={styles.panelHeader}>
               <div>
                 <h2 id="shap-title">SHAP 피처 기여도</h2>
                 <p>내일 예측에 영향을 미친 요인 분석</p>
               </div>
             </div>
-
-            <div className={styles.shapList}>
-              {shapFactors.map((factor) => (
-                <article key={factor.title} className={styles.shapItem}>
-                  <header>
-                    <div>
-                      <h3>{factor.title}</h3>
-                      <p>{factor.description}</p>
-                    </div>
-                    <span className={styles[factor.tone]}>{factor.direction}</span>
-                  </header>
-                  <div className={styles.shapBar}>
-                    <span className={styles[factor.tone]} style={{ width: factor.size }} />
-                  </div>
-                  <strong className={styles[factor.tone]}>{factor.value}</strong>
-                </article>
-              ))}
+            <div className={styles.shapEChartWrap}>
+              <EChart
+                ariaLabel="SHAP 피처 기여도 차트"
+                className={styles.shapEChart}
+                option={shapChartOption}
+              />
             </div>
           </section>
 

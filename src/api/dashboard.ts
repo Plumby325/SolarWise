@@ -72,6 +72,68 @@ export type UpdateAnomalyStatusResponse = {
   status: AnomalyEvent['status']
 }
 
+export type TimelineRange = 'DAY' | 'WEEK' | 'MONTH'
+
+export type TimelineTimePoint = {
+  ts: string
+  value: number
+}
+
+export type TimelineGapPoint = {
+  ts: string
+  absGap: number
+  gapRate: number
+}
+
+export type TimelineAnomalyMarker = {
+  eventId: number
+  ts: string
+  type: string
+  severity: string
+  status: string
+  summary: string
+}
+
+export type DashboardTimelineResponse = {
+  plantId: number
+  range: TimelineRange
+  virtualNow: string
+  windowStart: string
+  windowEnd: string
+  forecastEnd: string
+  actualSeries: TimelineTimePoint[]
+  predictionSeries: TimelineTimePoint[]
+  gapSeries: TimelineGapPoint[]
+  anomalyMarkers: TimelineAnomalyMarker[]
+}
+
+export type DashboardTimelineQuery = {
+  range?: TimelineRange
+  futureHours?: number
+  to?: string
+}
+
+export function getDashboardTimeline(plantId: number, query: DashboardTimelineQuery = {}) {
+  const params = new URLSearchParams()
+
+  if (query.range) {
+    params.set('range', query.range)
+  }
+
+  if (query.futureHours != null) {
+    params.set('futureHours', String(query.futureHours))
+  }
+
+  if (query.to) {
+    params.set('to', query.to)
+  }
+
+  const qs = params.toString()
+  return apiClient<ApiResponse<DashboardTimelineResponse>>(
+    `/api/v1/plants/${plantId}/dashboard/timeline${qs ? `?${qs}` : ''}`,
+  )
+}
+
 export function getMeasurements(plantId: number, from?: string, to?: string) {
   const params = new URLSearchParams()
 
