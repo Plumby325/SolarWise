@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
-import { getForecast, getMeasurements } from '@/api'
-import type { ForecastPoint, MeasurementPoint } from '@/api'
+import { getForecast, getForecastExplanation, getMeasurements } from '@/api'
+import type { ForecastPoint, MeasurementPoint, XaiExplanationPoint } from '@/api'
 import {
   FORECAST_CHART_DUMMY_MESSAGE,
   FORECAST_BRIDGE_MEASUREMENT_WINDOW_MS,
@@ -12,6 +12,7 @@ import {
   filterForecastsByHorizon,
   isForecastChartDummyForced,
 } from '@/shared/charts/forecastComboChartOption'
+import { deriveShapFeatureContributions } from '@/shared/charts/xaiFeatureContributions'
 import { useDefaultPlant } from '@/shared/hooks/useDefaultPlant'
 import { DashboardSidebar } from '@/shared/layout/DashboardSidebar'
 import { EChart } from '@/shared/ui/EChart'
@@ -24,55 +25,134 @@ const periodFilters: Array<{ id: ForecastHorizonId; label: string }> = [
   { id: '3d', label: '3일' },
 ]
 
-const summaryCards = [
-  {
-    label: '금일 예측 발전량',
-    value: '482.6',
-    unit: 'kWh',
-    note: '현재 기준 예측',
-    trend: '↓ -10.3%',
-    icon: '📅',
-    tone: 'blue',
-  },
-  {
-    label: '예측 신뢰도',
-    value: '91',
-    unit: '%',
-    note: 'XGBoost 모델 기준',
-    trend: '높음',
-    icon: '✓',
-    tone: 'green',
-  },
-  {
-    label: '주요 영향 요인',
-    value: '일사량',
-    unit: '',
-    note: 'SHAP 기여도 1위',
-    trend: '운량↑ 예상',
-    icon: '☀',
-    tone: 'amber',
-  },
-] as const
+type WeatherCardTone = 'amber' | 'red' | 'gray' | 'blue'
 
-const featureContributions = [
-  { label: '일사량', value: 0.52, color: '#185fa5' },
-  { label: '기온', value: 0.28, color: '#1d9e75' },
-  { label: '운량', value: -0.15, color: '#e24b4a' },
-  { label: '패널 상태', value: 0.1, color: '#ba7517' },
-] as const
+type WeatherCard = {
+  label: string
+  value: string
+  note: string
+  icon: string
+  tone: WeatherCardTone
+}
 
-const weatherCards = [
-  { label: '일사량', value: '702 W/m²', note: '어제 대비 +8%', icon: '☀', tone: 'amber' },
-  { label: '최고 기온', value: '24.5°C', note: '적정 발전 온도', icon: '🌡', tone: 'red' },
-  { label: '운량', value: '30%', note: '오후 60%↑', icon: '☁', tone: 'gray' },
-  { label: '습도', value: '42%', note: '낮음 (발전 양호)', icon: '💧', tone: 'blue' },
-] as const
+function parseBackendDateTime(value: string) {
+  return new Date(value.endsWith('Z') ? value.slice(0, -1) : value).getTime()
+}
+
+function isSameLocalDay(timestamp: number, reference: Date) {
+  const date = new Date(timestamp)
+  return (
+    date.getFullYear() === reference.getFullYear()
+    && date.getMonth() === reference.getMonth()
+    && date.getDate() === reference.getDate()
+  )
+}
+
+function inferForecastIntervalHours(points: ForecastPoint[]) {
+  if (points.length < 2) {
+    return 1
+  }
+  const sortedTimes = points
+    .map((point) => parseBackendDateTime(point.target_time))
+    .sort((a, b) => a - b)
+  const diffs: number[] = []
+  for (let index = 1; index < sortedTimes.length; index += 1) {
+    const diff = sortedTimes[index] - sortedTimes[index - 1]
+    if (diff > 0) {
+      diffs.push(diff)
+    }
+  }
+
+  if (diffs.length === 0) {
+    return 1
+  }
+
+  return Math.max(0.25, Math.min(...diffs) / (60 * 60 * 1000))
+}
+
+function getTodayForecastEnergyKwh(points: ForecastPoint[]) {
+  const now = new Date()
+  const todayPoints = points.filter((point) => isSameLocalDay(parseBackendDateTime(point.target_time), now))
+  if (todayPoints.length === 0) {
+    return null
+  }
+  const intervalHours = inferForecastIntervalHours(todayPoints)
+  const total = todayPoints.reduce((sum, point) => sum + point.predicted_power_kw * intervalHours, 0)
+  return Number(total.toFixed(1))
+}
+
+function getAverageConfidencePercent(points: ForecastPoint[]) {
+  const confidences = points.map((point) => point.confidence).filter((value): value is number => typeof value === 'number')
+  if (confidences.length === 0) {
+    return null
+  }
+  const average = confidences.reduce((sum, value) => sum + value, 0) / confidences.length
+  return Math.round(average * 100)
+}
+
+function getAverageMetric(measurements: MeasurementPoint[], metric: 'irradiance' | 'temperature' | 'humidity') {
+  const values = measurements
+    .map((measurement) => measurement[metric])
+    .filter((value): value is number => typeof value === 'number' && Number.isFinite(value))
+
+  if (values.length === 0) {
+    return null
+  }
+
+  const sum = values.reduce((acc, value) => acc + value, 0)
+  return sum / values.length
+}
+
+function getFeatureMean(explanations: XaiExplanationPoint[], keys: string[]) {
+  const values: number[] = []
+  explanations.forEach((item) => {
+    const source = item.feature_importance ?? item.shap_values ?? {}
+    keys.forEach((key) => {
+      const value = source[key]
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        values.push(value)
+      }
+    })
+  })
+
+  if (values.length === 0) {
+    return null
+  }
+
+  return values.reduce((acc, value) => acc + value, 0) / values.length
+}
+
+function formatSignedPercent(value: number) {
+  const sign = value >= 0 ? '+' : ''
+  return `${sign}${value.toFixed(1)}%`
+}
+
+function buildAiSummaryText(explanations: XaiExplanationPoint[], shapFeatureContributions: Array<{ label: string; value: number }>) {
+  const textFromApi = explanations.find((item) => item.explanation_text?.trim())?.explanation_text?.trim()
+    ?? explanations.find((item) => item.lime_explanation?.trim())?.lime_explanation?.trim()
+
+  if (textFromApi) {
+    return textFromApi
+  }
+
+  const topFactors = shapFeatureContributions.slice(0, 2)
+  if (topFactors.length === 0) {
+    return 'XAI 설명 데이터가 아직 없어 예측 근거를 준비 중입니다.'
+  }
+
+  const factorText = topFactors
+    .map((factor) => `${factor.label}(${factor.value >= 0 ? '+' : ''}${factor.value.toFixed(2)})`)
+    .join(', ')
+
+  return `상위 SHAP 요인 ${factorText}을 중심으로 예측 결과를 계산했습니다.`
+}
 
 export function PowerForecastPage() {
   const { defaultPlantId } = useDefaultPlant()
   const isDummyForced = isForecastChartDummyForced()
   const [forecastHorizon, setForecastHorizon] = useState<ForecastHorizonId>('2d')
   const [forecasts, setForecasts] = useState<ForecastPoint[]>([])
+  const [xaiExplanations, setXaiExplanations] = useState<XaiExplanationPoint[]>([])
   const [forecastError, setForecastError] = useState('')
   const [bridgeMeasurements, setBridgeMeasurements] = useState<MeasurementPoint[]>([])
   const [bridgeError, setBridgeError] = useState('')
@@ -80,11 +160,13 @@ export function PowerForecastPage() {
   useEffect(() => {
     if (!defaultPlantId) {
       setForecasts([])
+      setXaiExplanations([])
       setForecastError('발전소 데이터 없음')
       return
     }
     if (isDummyForced) {
       setForecasts(createDummyForecastSeries())
+      setXaiExplanations([])
       setForecastError(FORECAST_CHART_DUMMY_MESSAGE)
       return
     }
@@ -99,6 +181,7 @@ export function PowerForecastPage() {
           }
           const hasData = res.data.forecast_series.length > 0
           setForecasts(hasData ? res.data.forecast_series : createDummyForecastSeries())
+          setXaiExplanations(Array.isArray(res.data.explanations) ? res.data.explanations : [])
           setForecastError(hasData ? '' : '예측 API 데이터 없음 · 더미 데이터 표시 중')
         })
         .catch((error) => {
@@ -107,6 +190,7 @@ export function PowerForecastPage() {
           }
           console.error('발전량 예측 조회 실패:', error)
           setForecasts(createDummyForecastSeries())
+          setXaiExplanations([])
           setForecastError(`${error instanceof Error ? error.message : '예측 API 조회 실패'} · 더미 데이터 표시 중`)
         })
     }
@@ -117,6 +201,32 @@ export function PowerForecastPage() {
     return () => {
       isActive = false
       window.clearInterval(timer)
+    }
+  }, [defaultPlantId, isDummyForced])
+
+  useEffect(() => {
+    if (!defaultPlantId || isDummyForced) {
+      return
+    }
+
+    let isActive = true
+    getForecastExplanation(defaultPlantId)
+      .then((res) => {
+        if (!isActive) {
+          return
+        }
+        if (res.data.explanations.length > 0) {
+          setXaiExplanations(res.data.explanations)
+        }
+      })
+      .catch(() => {
+        if (!isActive) {
+          return
+        }
+      })
+
+    return () => {
+      isActive = false
     }
   }, [defaultPlantId, isDummyForced])
 
@@ -181,7 +291,112 @@ export function PowerForecastPage() {
       }),
     [bridgeError, bridgeMeasurements, forecastError, filteredForecasts],
   )
-  const shapChartOption = useMemo<EChartsCoreOption>(() => ({
+  const summaryCards = useMemo(() => {
+    const todayKwh = getTodayForecastEnergyKwh(forecasts)
+    const avgConfidence = getAverageConfidencePercent(forecasts)
+    const shapFeatureContributions = deriveShapFeatureContributions(xaiExplanations)
+    const majorFactor = shapFeatureContributions[0]
+
+    return [
+      {
+        label: '금일 예측 발전량',
+        value: todayKwh != null ? String(todayKwh) : '--',
+        unit: 'kWh',
+        note: '예측 API 기준 계산',
+        trend: todayKwh != null ? 'API 반영' : '데이터 없음',
+        icon: '📅',
+        tone: 'blue',
+      },
+      {
+        label: '예측 신뢰도',
+        value: avgConfidence != null ? String(avgConfidence) : '--',
+        unit: '%',
+        note: '예측 포인트 평균 신뢰도',
+        trend: avgConfidence == null ? '데이터 없음' : avgConfidence >= 90 ? '높음' : avgConfidence >= 75 ? '보통' : '낮음',
+        icon: '✓',
+        tone: 'green',
+      },
+      {
+        label: '주요 영향 요인',
+        value: majorFactor?.label ?? '--',
+        unit: '',
+        note: 'XAI 설명 API 기준',
+        trend: majorFactor == null ? '데이터 없음' : `${majorFactor.value > 0 ? '↑' : '↓'} ${Math.abs(majorFactor.value).toFixed(2)}`,
+        icon: '☀',
+        tone: 'amber',
+      },
+    ] as const
+  }, [forecasts, xaiExplanations])
+  const shapFeatureContributions = useMemo(
+    () => deriveShapFeatureContributions(xaiExplanations),
+    [xaiExplanations],
+  )
+  const weatherCards = useMemo<WeatherCard[]>(() => {
+    const irradiance = getAverageMetric(bridgeMeasurements, 'irradiance')
+    const temperature = getAverageMetric(bridgeMeasurements, 'temperature')
+    const humidity = getAverageMetric(bridgeMeasurements, 'humidity')
+    const cloudImpact = getFeatureMean(xaiExplanations, ['cloud_cover', 'cloud'])
+
+    return [
+      {
+        label: '일사량',
+        value: irradiance == null ? '--' : `${Math.round(irradiance)} W/m²`,
+        note: (() => {
+          const shapValue = getFeatureMean(xaiExplanations, ['irradiance', 'solar_irradiance'])
+          if (shapValue == null) {
+            return '실측 평균 기준'
+          }
+          return `SHAP 영향 ${formatSignedPercent(shapValue * 100)}`
+        })(),
+        icon: '☀',
+        tone: 'amber',
+      },
+      {
+        label: '기온',
+        value: temperature == null ? '--' : `${temperature.toFixed(1)}°C`,
+        note: (() => {
+          const shapValue = getFeatureMean(xaiExplanations, ['temperature', 'ambient_temperature'])
+          if (shapValue == null) {
+            return '실측 평균 기준'
+          }
+          return `SHAP 영향 ${formatSignedPercent(shapValue * 100)}`
+        })(),
+        icon: '🌡',
+        tone: 'red',
+      },
+      {
+        label: '운량',
+        value: cloudImpact == null ? '--' : `${Math.min(100, Math.round(Math.abs(cloudImpact) * 100))}%`,
+        note: cloudImpact == null
+          ? 'XAI 데이터 기반'
+          : cloudImpact > 0 ? '운량 증가 영향' : '운량 감소 영향',
+        icon: '☁',
+        tone: 'gray',
+      },
+      {
+        label: '습도',
+        value: humidity == null ? '--' : `${Math.round(humidity)}%`,
+        note: (() => {
+          const shapValue = getFeatureMean(xaiExplanations, ['humidity'])
+          if (shapValue == null) {
+            return '실측 평균 기준'
+          }
+          return `SHAP 영향 ${formatSignedPercent(shapValue * 100)}`
+        })(),
+        icon: '💧',
+        tone: 'blue',
+      },
+    ]
+  }, [bridgeMeasurements, xaiExplanations])
+  const aiSummaryText = useMemo(
+    () => buildAiSummaryText(xaiExplanations, shapFeatureContributions),
+    [shapFeatureContributions, xaiExplanations],
+  )
+  const shapChartOption = useMemo<EChartsCoreOption>(() => {
+    const maxContribution = Math.max(...shapFeatureContributions.map((feature) => Math.abs(feature.value)), 0.6)
+    const chartMax = Number((Math.ceil(maxContribution * 10) / 10).toFixed(1))
+
+    return ({
     grid: { top: 4, right: 58, bottom: 0, left: 58 },
     tooltip: {
       trigger: 'axis',
@@ -191,13 +406,13 @@ export function PowerForecastPage() {
     xAxis: {
       type: 'value',
       min: 0,
-      max: 0.6,
+      max: chartMax,
       show: false,
     },
     yAxis: {
       type: 'category',
       inverse: true,
-      data: featureContributions.map((feature) => feature.label),
+      data: shapFeatureContributions.map((feature) => feature.label),
       axisLine: { show: false },
       axisTick: { show: false },
       axisLabel: {
@@ -214,8 +429,8 @@ export function PowerForecastPage() {
         barGap: '-100%',
         silent: true,
         tooltip: { show: false },
-        data: featureContributions.map(() => ({
-          value: 0.52,
+        data: shapFeatureContributions.map(() => ({
+          value: chartMax,
           itemStyle: { color: '#eceae4', borderRadius: 3 },
         })),
       },
@@ -223,7 +438,7 @@ export function PowerForecastPage() {
         name: '기여도',
         type: 'bar',
         barWidth: 14,
-        data: featureContributions.map((feature) => ({
+        data: shapFeatureContributions.map((feature) => ({
           value: Math.abs(feature.value),
           rawValue: feature.value,
           itemStyle: { color: feature.color, borderRadius: 3 },
@@ -238,7 +453,8 @@ export function PowerForecastPage() {
         })),
       },
     ],
-  }), [])
+  })
+  }, [shapFeatureContributions])
 
   return (
     <div className={styles.page}>
@@ -350,14 +566,7 @@ export function PowerForecastPage() {
 
             <article className={styles.aiSummary}>
               <h3>AI 예측 요약</h3>
-              <p>
-                운량 증가와 일사량 감소가 내일 예측 발전량 하락에 가장 큰 영향을 주었습니다.
-                <br />
-                <br />
-                오전(09-12시) 최대 85kW 예상,
-                <br />
-                오후(13-17시) 구름 영향으로 58kW로 하락 예측.
-              </p>
+              <p>{aiSummaryText}</p>
             </article>
           </section>
         </div>

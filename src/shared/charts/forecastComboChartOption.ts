@@ -1,6 +1,5 @@
 import type { EChartsCoreOption } from 'echarts/core'
 import type { ForecastPoint, MeasurementPoint } from '@/api'
-import { formatKoreanMonthDay } from '@/shared/utils/dateFormat'
 
 /** 예측 차트 실측 브릿지용: 항상 이 구간만 조회 (실시간 차트 1h/12h/1d와 무관) */
 export const FORECAST_BRIDGE_MEASUREMENT_WINDOW_MS = 24 * 60 * 60 * 1000
@@ -15,7 +14,10 @@ function parseBackendDateTime(value: string) {
 }
 
 function formatChartDateLabel(value: string) {
-  return formatKoreanMonthDay(value)
+  const date = new Date(parseBackendDateTime(value))
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  return `${month}.${day}`
 }
 
 function roundChartValue(value: number) {

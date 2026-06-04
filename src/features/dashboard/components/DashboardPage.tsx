@@ -1,18 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { EChartsCoreOption } from 'echarts/core'
-import { getAnomalies, getDashboardSummary, getMeasurements, getPlants } from '@/api'
-import type { AnomalyEvent, DashboardSummary, MeasurementPoint, Plant, TimelineAnomalyMarker, TimelineRange } from '@/api'
-import { DemoSimulationToolbar } from '@/features/dashboard/components/DemoSimulationToolbar'
-import { TimelineAnomalyPanel } from '@/features/dashboard/components/TimelineAnomalyPanel'
-import { DashboardSidebar, SIMULATION_CHANGE_EVENT } from '@/shared/layout/DashboardSidebar'
+import { getAnomalies, getDashboardSummary, getForecast, getForecastExplanation, getMeasurements, getPlants } from '@/api'
+import type { AnomalyEvent, DashboardSummary, ForecastPoint, MeasurementPoint, Plant, XaiExplanationPoint } from '@/api'
+import { DashboardSidebar } from '@/shared/layout/DashboardSidebar'
 import { DashboardSettingsMenu } from '@/shared/layout/DashboardSettingsMenu'
 import {
-  buildDashboardTimelineChartOption,
-  extractMarkerFromChartClick,
-  type TimelineChartClickParams,
-} from '@/shared/charts/dashboardTimelineChartOption'
-import { useDashboardTimeline } from '@/shared/hooks/useDashboardTimeline'
+  FORECAST_BRIDGE_MEASUREMENT_WINDOW_MS,
+  buildForecastComboChartOption,
+  createDummyBridgeMeasurements,
+  createDummyForecastSeries,
+} from '@/shared/charts/forecastComboChartOption'
+import { deriveShapFeatureContributions } from '@/shared/charts/xaiFeatureContributions'
 import { EChart } from '@/shared/ui/EChart'
 import { formatKoreanDateTime, formatLocalDateTimeForApi, formatRelativeTime } from '@/shared/utils/dateFormat'
 import styles from './DashboardPage.module.css'
@@ -24,19 +23,6 @@ const generationRanges = [
 ] as const
 
 type GenerationRangeId = (typeof generationRanges)[number]['id']
-
-const timelineRanges: Array<{ id: TimelineRange; label: string }> = [
-  { id: 'DAY', label: 'DAY' },
-  { id: 'WEEK', label: 'WEEK' },
-  { id: 'MONTH', label: 'MONTH' },
-]
-
-const featureContributions = [
-  { label: '일사량', value: 0.52, tone: 'blue', color: '#185fa5' },
-  { label: '기온', value: 0.28, tone: 'green', color: '#1d9e75' },
-  { label: '운량', value: -0.15, tone: 'red', color: '#e24b4a' },
-  { label: '패널 상태', value: 0.1, tone: 'amber', color: '#ba7517' },
-] as const
 
 function parseBackendDateTime(value: string) {
   return new Date(value.endsWith('Z') ? value.slice(0, -1) : value).getTime()
@@ -50,19 +36,6 @@ function formatChartTime(value: string | number) {
   return `${hours}:${minutes}`
 }
 
-function formatGenerationChartTime(value: string | number, rangeId: GenerationRangeId) {
-  const date = typeof value === 'number' ? new Date(value) : new Date(parseBackendDateTime(value))
-
-  if (rangeId === '1d') {
-    const month = date.getMonth() + 1
-    const day = date.getDate()
-
-    return `${month}/${day} ${formatChartTime(date.getTime())}`
-  }
-
-  return formatChartTime(date.getTime())
-}
-
 function roundChartValue(value: number) {
   return Number(value.toFixed(1))
 }
@@ -73,6 +46,42 @@ function getGenerationRangeDuration(rangeId: GenerationRangeId) {
 
 function getGenerationAxisInterval(rangeId: GenerationRangeId) {
   return rangeId === '1h' ? 15 * 60 * 1000 : 60 * 60 * 1000
+}
+
+function getMeasurementAxisBounds(measurements: MeasurementPoint[], rangeId: GenerationRangeId) {
+  const axisInterval = getGenerationAxisInterval(rangeId)
+  const fallbackAxisMax = Math.ceil(Date.now() / axisInterval) * axisInterval
+  const fallbackDuration = getGenerationRangeDuration(rangeId)
+  const measuredTimes = measurements
+    .map((point) => parseBackendDateTime(point.measuredAt))
+    .filter((value) => Number.isFinite(value))
+
+  if (measuredTimes.length === 0) {
+    return {
+      axisInterval,
+      axisMin: fallbackAxisMax - fallbackDuration,
+      axisMax: fallbackAxisMax,
+    }
+  }
+
+  const dataMin = Math.min(...measuredTimes)
+  const dataMax = Math.max(...measuredTimes)
+  const axisMinFromData = Math.floor(dataMin / axisInterval) * axisInterval
+  const axisMaxFromData = Math.ceil(dataMax / axisInterval) * axisInterval
+
+  if (axisMaxFromData === axisMinFromData) {
+    return {
+      axisInterval,
+      axisMin: axisMaxFromData - fallbackDuration,
+      axisMax: axisMaxFromData,
+    }
+  }
+
+  return {
+    axisInterval,
+    axisMin: axisMinFromData,
+    axisMax: axisMaxFromData,
+  }
 }
 
 function createDummyMeasurements(rangeId: GenerationRangeId): MeasurementPoint[] {
@@ -153,35 +162,16 @@ export function DashboardPage() {
   const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null)
   const [summaryError, setSummaryError] = useState('')
   const [measurements, setMeasurements] = useState<MeasurementPoint[]>([])
+  const [forecasts, setForecasts] = useState<ForecastPoint[]>([])
   const [anomalies, setAnomalies] = useState<AnomalyEvent[]>([])
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
   const [notificationError, setNotificationError] = useState('')
   const [measurementError, setMeasurementError] = useState('')
-  const [selectedMarker, setSelectedMarker] = useState<TimelineAnomalyMarker | null>(null)
+  const [forecastError, setForecastError] = useState('')
+  const [forecastBridgeMeasurements, setForecastBridgeMeasurements] = useState<MeasurementPoint[]>([])
+  const [forecastBridgeError, setForecastBridgeError] = useState('')
+  const [xaiExplanations, setXaiExplanations] = useState<XaiExplanationPoint[]>([])
   const [refreshKey, setRefreshKey] = useState(0)
-  const {
-    range: timelineRange,
-    setRange: setTimelineRange,
-    timeline,
-    playback,
-    isLoading: isTimelineLoading,
-    error: timelineError,
-    refresh: refreshTimeline,
-    virtualNow,
-  } = useDashboardTimeline(selectedPlantId, refreshKey)
-
-  useEffect(() => {
-    const handleSimulationChange = () => {
-      void refreshTimeline()
-      setRefreshKey((key) => key + 1)
-    }
-
-    window.addEventListener(SIMULATION_CHANGE_EVENT, handleSimulationChange)
-
-    return () => {
-      window.removeEventListener(SIMULATION_CHANGE_EVENT, handleSimulationChange)
-    }
-  }, [refreshTimeline])
 
   const selectedPlant = plants.find((plant) => plant.plantId === selectedPlantId)
   const activeAnomalies = anomalies.filter((anomaly) => anomaly.status !== 'RESOLVED')
@@ -270,11 +260,6 @@ export function DashboardPage() {
       return
     }
 
-    if (playback?.running) {
-      setMeasurementError('시연 재생 중 · 실시간 차트는 타임라인 패널을 참고하세요')
-      return
-    }
-
     let isActive = true
 
     const fetchMeasurements = () => {
@@ -309,7 +294,7 @@ export function DashboardPage() {
       isActive = false
       window.clearInterval(pollingTimer)
     }
-  }, [playback?.running, refreshKey, selectedGenerationRange, selectedPlantId])
+  }, [refreshKey, selectedGenerationRange, selectedPlantId])
 
   useEffect(() => {
     if (!selectedPlantId) {
@@ -388,12 +373,129 @@ export function DashboardPage() {
     }
   }, [refreshKey, selectedPlantId])
 
+  useEffect(() => {
+    if (!selectedPlantId) {
+      setForecasts([])
+      setXaiExplanations([])
+      setForecastError('발전소 데이터 없음')
+      return
+    }
+
+    let isActive = true
+
+    const fetchForecasts = () => {
+      getForecast(selectedPlantId)
+        .then((forecastResponse) => {
+          if (!isActive) {
+            return
+          }
+
+          const hasBackendData = forecastResponse.data.forecast_series.length > 0
+          setForecasts(hasBackendData ? forecastResponse.data.forecast_series : createDummyForecastSeries())
+          setXaiExplanations(Array.isArray(forecastResponse.data.explanations) ? forecastResponse.data.explanations : [])
+          setForecastError(hasBackendData ? '' : '예측 API 데이터 없음 · 더미 데이터 표시 중')
+        })
+        .catch((error) => {
+          if (!isActive) {
+            return
+          }
+
+          console.error('AI 발전량 예측 조회 실패:', error)
+          setForecasts(createDummyForecastSeries())
+          setXaiExplanations([])
+          setForecastError(`${error instanceof Error ? error.message : '예측 API 조회 실패'} · 더미 데이터 표시 중`)
+        })
+    }
+
+    fetchForecasts()
+    const pollingTimer = window.setInterval(fetchForecasts, 30000)
+
+    return () => {
+      isActive = false
+      window.clearInterval(pollingTimer)
+    }
+  }, [refreshKey, selectedPlantId])
+
+  useEffect(() => {
+    if (!selectedPlantId) {
+      setXaiExplanations([])
+      return
+    }
+
+    let isActive = true
+
+    const fetchForecastExplanations = () => {
+      getForecastExplanation(selectedPlantId)
+        .then((explanationResponse) => {
+          if (!isActive) {
+            return
+          }
+          setXaiExplanations(explanationResponse.data.explanations)
+        })
+        .catch((error) => {
+          if (!isActive) {
+            return
+          }
+          console.error('SHAP 설명 조회 실패:', error)
+        })
+    }
+
+    fetchForecastExplanations()
+    const pollingTimer = window.setInterval(fetchForecastExplanations, 30000)
+
+    return () => {
+      isActive = false
+      window.clearInterval(pollingTimer)
+    }
+  }, [refreshKey, selectedPlantId])
+
+  useEffect(() => {
+    if (!selectedPlantId) {
+      setForecastBridgeMeasurements([])
+      setForecastBridgeError('발전소 데이터 없음')
+      return
+    }
+
+    let isActive = true
+
+    const fetchForecastBridge = () => {
+      const to = new Date()
+      const from = new Date(to.getTime() - FORECAST_BRIDGE_MEASUREMENT_WINDOW_MS)
+
+      getMeasurements(selectedPlantId, formatLocalDateTimeForApi(from), formatLocalDateTimeForApi(to))
+        .then((measurementResponse) => {
+          if (!isActive) {
+            return
+          }
+
+          const hasBackendData = measurementResponse.data.series.length > 0
+          setForecastBridgeMeasurements(hasBackendData ? measurementResponse.data.series : createDummyBridgeMeasurements())
+          setForecastBridgeError(hasBackendData ? '' : '계측 API 데이터 없음 · 더미 데이터 표시 중')
+        })
+        .catch((error) => {
+          if (!isActive) {
+            return
+          }
+
+          console.error('예측 차트용 계측 조회 실패:', error)
+          setForecastBridgeMeasurements(createDummyBridgeMeasurements())
+          setForecastBridgeError(`${error instanceof Error ? error.message : '계측 API 조회 실패'} · 더미 데이터 표시 중`)
+        })
+    }
+
+    fetchForecastBridge()
+    const bridgeTimer = window.setInterval(fetchForecastBridge, 5000)
+
+    return () => {
+      isActive = false
+      window.clearInterval(bridgeTimer)
+    }
+  }, [refreshKey, selectedPlantId])
+
 
   const generationChartOption = useMemo<EChartsCoreOption>(() => {
     const powerValues = measurements.map((point) => point.powerKw)
-    const axisInterval = getGenerationAxisInterval(selectedGenerationRange)
-    const axisMax = Math.ceil(Date.now() / axisInterval) * axisInterval
-    const axisMin = axisMax - getGenerationRangeDuration(selectedGenerationRange)
+    const { axisInterval, axisMin, axisMax } = getMeasurementAxisBounds(measurements, selectedGenerationRange)
 
     return {
       color: ['#185fa5'],
@@ -427,7 +529,7 @@ export function DashboardPage() {
           color: '#c4c2bb',
           fontSize: 9,
           hideOverlap: true,
-          formatter: (value: number) => formatGenerationChartTime(value, selectedGenerationRange),
+          formatter: (value: number) => formatChartTime(value),
         },
         splitLine: { show: true, lineStyle: { color: '#f5f3ef' } },
       },
@@ -455,27 +557,27 @@ export function DashboardPage() {
     }
   }, [measurementError, measurements, selectedGenerationRange])
 
-  const handleTimelineChartClick = useCallback((params: unknown) => {
-    const marker = extractMarkerFromChartClick(params as TimelineChartClickParams)
-
-    if (marker) {
-      setSelectedMarker(marker)
-    }
-  }, [])
-
-  const timelineChartOption = useMemo<EChartsCoreOption>(
-    () => buildDashboardTimelineChartOption(timeline, timelineError),
-    [timeline, timelineError],
+  const forecastChartOption = useMemo<EChartsCoreOption>(
+    () =>
+      buildForecastComboChartOption({
+        bridgeMeasurements: forecastBridgeMeasurements,
+        forecasts,
+        bridgeError: forecastBridgeError,
+        forecastError,
+      }),
+    [forecastBridgeError, forecastBridgeMeasurements, forecastError, forecasts],
   )
 
-  const timelineChartEvents = useMemo(
-    () => ({
-      click: handleTimelineChartClick,
-    }),
-    [handleTimelineChartClick],
+  const shapFeatureContributions = useMemo(
+    () => deriveShapFeatureContributions(xaiExplanations),
+    [xaiExplanations],
   )
 
-  const shapChartOption = useMemo<EChartsCoreOption>(() => ({
+  const shapChartOption = useMemo<EChartsCoreOption>(() => {
+    const maxContribution = Math.max(...shapFeatureContributions.map((feature) => Math.abs(feature.value)), 0.6)
+    const chartMax = Number((Math.ceil(maxContribution * 10) / 10).toFixed(1))
+
+    return ({
     grid: { top: 4, right: 58, bottom: 0, left: 58 },
     tooltip: {
       trigger: 'axis',
@@ -485,13 +587,13 @@ export function DashboardPage() {
     xAxis: {
       type: 'value',
       min: 0,
-      max: 0.6,
+      max: chartMax,
       show: false,
     },
     yAxis: {
       type: 'category',
       inverse: true,
-      data: featureContributions.map((feature) => feature.label),
+      data: shapFeatureContributions.map((feature) => feature.label),
       axisLine: { show: false },
       axisTick: { show: false },
       axisLabel: {
@@ -508,8 +610,8 @@ export function DashboardPage() {
         barGap: '-100%',
         silent: true,
         tooltip: { show: false },
-        data: featureContributions.map(() => ({
-          value: 0.52,
+        data: shapFeatureContributions.map(() => ({
+          value: chartMax,
           itemStyle: { color: '#eceae4', borderRadius: 3 },
         })),
       },
@@ -517,7 +619,7 @@ export function DashboardPage() {
         name: '기여도',
         type: 'bar',
         barWidth: 14,
-        data: featureContributions.map((feature) => ({
+        data: shapFeatureContributions.map((feature) => ({
           value: Math.abs(feature.value),
           rawValue: feature.value,
           itemStyle: { color: feature.color, borderRadius: 3 },
@@ -532,7 +634,8 @@ export function DashboardPage() {
         })),
       },
     ],
-  }), [])
+  })
+  }, [shapFeatureContributions])
 
   return (
     <div className={styles.dashboard}>
@@ -546,10 +649,7 @@ export function DashboardPage() {
               <span aria-hidden="true" />
               정상 운영
             </span>
-            <time>
-              가상 시각 · {virtualNow ? formatKoreanDateTime(virtualNow) : '—'}
-              {playback?.running ? ' · 재생 중' : ''}
-            </time>
+            <time>마지막 업데이트 · {dashboardSummary ? formatKoreanDateTime(dashboardSummary.lastUpdatedAt) : '—'}</time>
           </div>
 
           <div className={styles.headerActions}>
@@ -674,77 +774,35 @@ export function DashboardPage() {
             />
           </section>
 
-          <section className={styles.panel} aria-labelledby="timeline-title">
+          <section className={styles.panel} aria-labelledby="forecast-title">
             <div className={styles.panelHeader}>
               <div>
                 <div className={styles.titleRow}>
-                  <h2 id="timeline-title">시계열 시뮬레이션 (실측·예측·괴리)</h2>
-                  <span className={styles.aiBadge}>1s fixed</span>
-                  {playback?.running ? <span className={styles.playbackBadge}>재생 중</span> : null}
+                  <h2 id="forecast-title">AI 발전량 예측 (2~3일)</h2>
+                  <span className={styles.aiBadge}>AI Powered</span>
                 </div>
-                <p>
-                  {timelineError || (isTimelineLoading ? '타임라인 로딩 중…' : '가상 시간 기준 · 이상 마커 클릭 시 상세')}
-                </p>
-              </div>
-              <div className={styles.segmentedControl} aria-label="타임라인 범위">
-                {timelineRanges.map((rangeOption) => (
-                  <button
-                    key={rangeOption.id}
-                    className={timelineRange === rangeOption.id ? styles.segmentActive : ''}
-                    type="button"
-                    aria-pressed={timelineRange === rangeOption.id}
-                    onClick={() => setTimelineRange(rangeOption.id)}
-                  >
-                    {rangeOption.label}
-                  </button>
-                ))}
+                <p>{forecastError || 'XGBoost 기반 · 백엔드 예측 API 연동'}</p>
               </div>
             </div>
 
-            <DemoSimulationToolbar
-              plantId={selectedPlantId}
-              isRunning={playback?.running ?? false}
-              onPlaybackChange={() => {
-                void refreshTimeline()
-                setRefreshKey((key) => key + 1)
-              }}
-              onTriggerComplete={() => {
-                void refreshTimeline()
-                setRefreshKey((key) => key + 1)
-              }}
-            />
-
-            <div className={styles.timelineBody}>
-              <div className={styles.timelineChart}>
+            <div className={styles.forecastBody}>
+              <div className={styles.forecastChart}>
                 <EChart
-                  ariaLabel="대시보드 시계열 시뮬레이션 차트"
+                  ariaLabel="백엔드 예측 데이터 기반 AI 발전량 예측 차트"
                   className={styles.forecastEChart}
-                  option={timelineChartOption}
-                  onEvents={timelineChartEvents}
+                  option={forecastChartOption}
                 />
               </div>
 
-              {selectedMarker && selectedPlantId ? (
-                <TimelineAnomalyPanel
-                  plantId={selectedPlantId}
-                  marker={selectedMarker}
-                  onClose={() => setSelectedMarker(null)}
-                  onStatusUpdated={() => {
-                    void refreshTimeline()
-                    setRefreshKey((key) => key + 1)
-                  }}
+              <aside className={styles.shapCard} aria-label="SHAP 피처 기여도">
+                <h3>SHAP 피처 기여도</h3>
+                <p>각 피처가 예측에 미친 영향</p>
+                <EChart
+                  ariaLabel="SHAP 피처 기여도 차트"
+                  className={styles.shapEChart}
+                  option={shapChartOption}
                 />
-              ) : (
-                <aside className={styles.shapCard} aria-label="SHAP 피처 기여도">
-                  <h3>SHAP 피처 기여도</h3>
-                  <p>각 피처가 예측에 미친 영향</p>
-                  <EChart
-                    ariaLabel="SHAP 피처 기여도 차트"
-                    className={styles.shapEChart}
-                    option={shapChartOption}
-                  />
-                </aside>
-              )}
+              </aside>
             </div>
           </section>
 

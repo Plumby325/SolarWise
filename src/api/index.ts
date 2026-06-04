@@ -7,10 +7,17 @@ export {
   getDashboardSummary,
   getDashboardTimeline,
   getForecast,
+  getForecastExplanation,
   getMeasurements,
   getPlants,
   updateAnomalyStatus,
 } from './dashboard'
+export {
+  createChatSession,
+  getChatMessages,
+  getChatSessions,
+  sendChatMessage,
+} from './chat'
 export {
   getPlaybackStatus,
   getSimulationTime,
@@ -26,7 +33,9 @@ export type {
   DashboardTimelineQuery,
   DashboardTimelineResponse,
   ForecastPoint,
+  ForecastExplanationResponse,
   ForecastResponse,
+  XaiExplanationPoint,
   MeasurementPoint,
   MeasurementSeries,
   Plant,
@@ -38,3 +47,4 @@ export type {
 } from './dashboard'
 export type { PowerAnomalyTriggerBody, SimulationPlaybackStatus } from './simulation'
 export type { LoginRequest, LoginResponse, SignupRequest, UserResponse } from './auth'
+export type { ChatMessage, ChatSession, SendChatMessageBody } from './chat'

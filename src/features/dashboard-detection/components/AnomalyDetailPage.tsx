@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { getAnomalyDetail, updateAnomalyStatus } from '@/api'
-import type { AnomalyEvent } from '@/api'
+import { createChatSession, getAnomalyDetail, getChatMessages, getChatSessions, sendChatMessage, updateAnomalyStatus } from '@/api'
+import type { AnomalyEvent, ChatMessage } from '@/api'
 import { useDefaultPlant } from '@/shared/hooks/useDefaultPlant'
 import { DashboardSidebar } from '@/shared/layout/DashboardSidebar'
 import { BackNavLink } from '@/shared/ui/BackNavLink'
-import { formatKoreanDateTime, formatKoreanTime } from '@/shared/utils/dateFormat'
+import { formatKoreanDateTime } from '@/shared/utils/dateFormat'
 import { getFallbackText } from '@/shared/utils/text'
 import styles from './AnomalyDetailPage.module.css'
 
@@ -35,6 +35,36 @@ function getSeverityTone(severity: string | undefined) {
   return 'red'
 }
 
+function getProcessingHistoryStorageKey(plantId: number, eventId: number) {
+  return `solarwise-anomaly-history-${plantId}-${eventId}`
+}
+
+type ProcessingHistory = {
+  acknowledgedAt: string | null
+  resolvedAt: string | null
+}
+
+function readProcessingHistory(plantId: number, eventId: number): ProcessingHistory {
+  try {
+    const raw = localStorage.getItem(getProcessingHistoryStorageKey(plantId, eventId))
+    if (!raw) {
+      return { acknowledgedAt: null, resolvedAt: null }
+    }
+
+    const parsed = JSON.parse(raw) as Partial<ProcessingHistory>
+    return {
+      acknowledgedAt: typeof parsed.acknowledgedAt === 'string' ? parsed.acknowledgedAt : null,
+      resolvedAt: typeof parsed.resolvedAt === 'string' ? parsed.resolvedAt : null,
+    }
+  } catch {
+    return { acknowledgedAt: null, resolvedAt: null }
+  }
+}
+
+function writeProcessingHistory(plantId: number, eventId: number, history: ProcessingHistory) {
+  localStorage.setItem(getProcessingHistoryStorageKey(plantId, eventId), JSON.stringify(history))
+}
+
 export function AnomalyDetailPage() {
   const [searchParams] = useSearchParams()
   const eventId = Number(searchParams.get('eventId'))
@@ -43,7 +73,18 @@ export function AnomalyDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [chatSessionId, setChatSessionId] = useState<number | null>(null)
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatErrorMessage, setChatErrorMessage] = useState('')
+  const [isChatLoading, setIsChatLoading] = useState(true)
+  const [isChatSending, setIsChatSending] = useState(false)
+  const [processingHistory, setProcessingHistory] = useState<ProcessingHistory>({
+    acknowledgedAt: null,
+    resolvedAt: null,
+  })
   const hasValidEventId = Number.isFinite(eventId) && eventId > 0
+  const chatSessionTitle = `이상 이벤트 #${eventId}`
 
   const historyItems = useMemo(() => {
     if (!event) {
@@ -51,46 +92,47 @@ export function AnomalyDetailPage() {
     }
 
     const items = [
-      { time: formatKoreanTime(event.detectedAt), title: '이상 감지', detail: event.summary, tone: 'red' },
+      {
+        time: formatKoreanDateTime(event.detectedAt),
+        title: '이상 감지',
+        detail: event.summary,
+        tone: 'red',
+      },
     ]
 
     if (event.status === 'ACKNOWLEDGED' || event.status === 'RESOLVED') {
-      items.push({ time: '현재', title: '확인 완료', detail: '담당자가 이상 이벤트를 확인했습니다.', tone: 'green' })
+      items.push({
+        time: processingHistory.acknowledgedAt
+          ? formatKoreanDateTime(processingHistory.acknowledgedAt)
+          : '시간 정보 없음',
+        title: '확인 완료',
+        detail: '담당자가 이상 이벤트를 확인했습니다.',
+        tone: 'green',
+      })
     }
 
     if (event.status === 'RESOLVED') {
-      items.push({ time: '현재', title: '해결 완료', detail: '이상 이벤트가 해결 상태로 변경되었습니다.', tone: 'green' })
+      items.push({
+        time: processingHistory.resolvedAt
+          ? formatKoreanDateTime(processingHistory.resolvedAt)
+          : '시간 정보 없음',
+        title: '처리 완료',
+        detail: '이상 이벤트 처리가 완료되었습니다.',
+        tone: 'green',
+      })
     }
 
     return items
-  }, [event])
+  }, [event, processingHistory])
 
-  const aiMessages = useMemo(() => {
-    if (!event) {
-      return []
+  useEffect(() => {
+    if (!defaultPlantId || !hasValidEventId) {
+      setProcessingHistory({ acknowledgedAt: null, resolvedAt: null })
+      return
     }
 
-    return [
-      {
-        type: 'ai',
-        lines: [
-          `이상 이벤트 #${event.eventId}의 내용을 요약해드릴게요.`,
-          getFallbackText(event.cause, '아직 등록된 원인 분석 내용이 없습니다.'),
-        ],
-      },
-      {
-        type: 'reference',
-        lines: [`참조: ${event.type} 유형 · ${event.severity} 심각도 · ${event.status} 상태`],
-      },
-      {
-        type: 'ai',
-        lines: [
-          getFallbackText(event.xaiExplanation, '아직 등록된 XAI 판단 근거가 없습니다.'),
-          getFallbackText(event.recommendedAction, '권장 조치는 담당자 확인 후 등록하세요.'),
-        ],
-      },
-    ] as const
-  }, [event])
+    setProcessingHistory(readProcessingHistory(defaultPlantId, eventId))
+  }, [defaultPlantId, eventId, hasValidEventId])
 
   useEffect(() => {
     if (isPlantLoading) {
@@ -139,6 +181,61 @@ export function AnomalyDetailPage() {
     }
   }, [defaultPlantId, eventId, hasValidEventId, isPlantLoading, plantErrorMessage])
 
+  useEffect(() => {
+    if (isPlantLoading) {
+      return
+    }
+
+    if (!defaultPlantId || !hasValidEventId) {
+      setChatSessionId(null)
+      setChatMessages([])
+      setChatErrorMessage('')
+      setIsChatLoading(false)
+      return
+    }
+
+    let isActive = true
+
+    const initializeChat = async () => {
+      setIsChatLoading(true)
+      setChatErrorMessage('')
+
+      try {
+        const sessionsResponse = await getChatSessions(defaultPlantId)
+        const matchedSession = sessionsResponse.data.find((session) => session.sessionTitle === chatSessionTitle)
+        const chatSession = matchedSession ?? (await createChatSession(defaultPlantId, chatSessionTitle)).data
+
+        if (!isActive) {
+          return
+        }
+
+        setChatSessionId(chatSession.sessionId)
+        const messagesResponse = await getChatMessages(defaultPlantId, chatSession.sessionId)
+        if (!isActive) {
+          return
+        }
+        setChatMessages(messagesResponse.data)
+      } catch (error) {
+        if (!isActive) {
+          return
+        }
+        setChatSessionId(null)
+        setChatMessages([])
+        setChatErrorMessage(error instanceof Error ? error.message : 'AI 채팅 내역을 불러오지 못했습니다.')
+      } finally {
+        if (isActive) {
+          setIsChatLoading(false)
+        }
+      }
+    }
+
+    void initializeChat()
+
+    return () => {
+      isActive = false
+    }
+  }, [chatSessionTitle, defaultPlantId, hasValidEventId, isPlantLoading])
+
   const handleStatusChange = (status: 'ACKNOWLEDGED' | 'RESOLVED') => {
     if (!defaultPlantId || !event) {
       return
@@ -148,7 +245,21 @@ export function AnomalyDetailPage() {
     setErrorMessage('')
 
     updateAnomalyStatus(defaultPlantId, event.eventId, status)
-      .then(() => getAnomalyDetail(defaultPlantId, eventId))
+      .then(() => {
+        const now = new Date().toISOString()
+        const previousHistory = readProcessingHistory(defaultPlantId, event.eventId)
+        const nextHistory: ProcessingHistory =
+          status === 'ACKNOWLEDGED'
+            ? { ...previousHistory, acknowledgedAt: now }
+            : {
+                acknowledgedAt: previousHistory.acknowledgedAt ?? now,
+                resolvedAt: now,
+              }
+
+        writeProcessingHistory(defaultPlantId, event.eventId, nextHistory)
+        setProcessingHistory(nextHistory)
+        return getAnomalyDetail(defaultPlantId, eventId)
+      })
       .then((refresh) => {
         setEvent(refresh.data)
       })
@@ -158,6 +269,42 @@ export function AnomalyDetailPage() {
       .finally(() => {
         setIsUpdating(false)
       })
+  }
+
+  const sendUserQuestion = (question: string) => {
+    if (!defaultPlantId || !chatSessionId) {
+      return
+    }
+
+    const content = question.trim()
+    if (!content) {
+      return
+    }
+
+    setIsChatSending(true)
+    setChatErrorMessage('')
+
+    sendChatMessage(defaultPlantId, chatSessionId, {
+      senderRole: 'USER',
+      content,
+      imageUrl: null,
+    })
+      .then(() => getChatMessages(defaultPlantId, chatSessionId))
+      .then((response) => {
+        setChatMessages(response.data)
+        setChatInput('')
+      })
+      .catch((error) => {
+        setChatErrorMessage(error instanceof Error ? error.message : '질문 전송에 실패했습니다.')
+      })
+      .finally(() => {
+        setIsChatSending(false)
+      })
+  }
+
+  const handleChatSubmit = (eventObject: FormEvent<HTMLFormElement>) => {
+    eventObject.preventDefault()
+    sendUserQuestion(chatInput)
   }
 
   const recommendedActions = getRecommendedActions(event?.recommendedAction)
@@ -280,21 +427,42 @@ export function AnomalyDetailPage() {
             </header>
 
             <div className={styles.chatBody}>
-              {aiMessages.map((message, index) => (
-                <article key={`${message.type}-${index}`} className={styles[`${message.type}Message`]}>
-                  {message.type === 'ai' ? <span className={styles.messageAvatar}>AI</span> : null}
-                  <div>
-                    {message.lines.map((line) => (
-                      <p key={line}>{line}</p>
-                    ))}
-                  </div>
+              {isChatLoading ? (
+                <article className={styles.referenceMessage}>
+                  <p>AI 채팅 내역을 불러오는 중입니다.</p>
                 </article>
-              ))}
+              ) : null}
+
+              {!isChatLoading && chatMessages.length === 0 && !chatErrorMessage ? (
+                <article className={styles.referenceMessage}>
+                  <p>채팅 내역이 없습니다. 빠른 질문을 눌러 시작해보세요.</p>
+                </article>
+              ) : null}
+
+              {chatMessages.map((message) => {
+                const messageClassName = message.senderRole === 'AI' ? styles.aiMessage : styles.userMessage
+                return (
+                  <article key={message.messageId} className={messageClassName}>
+                    {message.senderRole === 'AI' ? <span className={styles.messageAvatar}>AI</span> : null}
+                    <div>
+                      <p>{message.content}</p>
+                    </div>
+                  </article>
+                )
+              })}
+
+              {chatErrorMessage ? (
+                <article className={styles.referenceMessage}>
+                  <p>{chatErrorMessage}</p>
+                </article>
+              ) : null}
 
               <div className={styles.quickArea}>
                 <h3>💬 빠른 질문</h3>
                 {quickQuestions.map((question) => (
-                  <button key={question} type="button">→ {question}</button>
+                  <button key={question} type="button" disabled={!chatSessionId || isChatSending} onClick={() => sendUserQuestion(question)}>
+                    → {question}
+                  </button>
                 ))}
               </div>
 
@@ -315,10 +483,18 @@ export function AnomalyDetailPage() {
               </div>
             </div>
 
-            <form className={styles.chatInput}>
+            <form className={styles.chatInput} onSubmit={handleChatSubmit}>
               <label htmlFor="anomaly-question">이상 원인 질문</label>
-              <input id="anomaly-question" placeholder="이상 원인에 대해 질문하세요..." />
-              <button type="submit" aria-label="질문 전송">↑</button>
+              <input
+                id="anomaly-question"
+                placeholder="이상 원인에 대해 질문하세요..."
+                value={chatInput}
+                onChange={(inputEvent) => setChatInput(inputEvent.target.value)}
+                disabled={!chatSessionId || isChatSending}
+              />
+              <button type="submit" aria-label="질문 전송" disabled={!chatSessionId || isChatSending || !chatInput.trim()}>
+                ↑
+              </button>
             </form>
           </section>
         </div>

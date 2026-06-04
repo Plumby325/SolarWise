@@ -50,9 +50,23 @@ export type ForecastPoint = {
   model_notes: string | null
 }
 
+export type XaiExplanationPoint = {
+  feature_importance: Record<string, number> | null
+  shap_values: Record<string, number> | null
+  lime_explanation: string | null
+  model_confidence: number | null
+  explanation_text: string | null
+}
+
 export type ForecastResponse = {
   plant_id: string
   forecast_series: ForecastPoint[]
+  explanations?: XaiExplanationPoint[]
+}
+
+export type ForecastExplanationResponse = {
+  plant_id: string
+  explanations: XaiExplanationPoint[]
 }
 
 export type AnomalyEvent = {
@@ -155,6 +169,10 @@ export function getDashboardSummary(plantId: number) {
 
 export function getForecast(plantId: number) {
   return apiClient<ApiResponse<ForecastResponse>>(`/api/v1/plants/${plantId}/forecasts`)
+}
+
+export function getForecastExplanation(plantId: number) {
+  return apiClient<ApiResponse<ForecastExplanationResponse>>(`/api/v1/plants/${plantId}/forecasts/explanations`)
 }
 
 export function getAnomalies(plantId: number, limit = 5) {
