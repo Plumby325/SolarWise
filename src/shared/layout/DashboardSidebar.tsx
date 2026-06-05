@@ -7,6 +7,7 @@ import {
   startPlayback,
   stopPlayback,
   triggerPowerAnomaly,
+  triggerVisionAnomaly,
 } from '@/api'
 import { getSessionUser, getSessionUserDisplayName, getSessionUserRoleLabel } from '@/shared/utils/sessionUser'
 import { DashboardSettingsMenu } from './DashboardSettingsMenu'
@@ -97,7 +98,7 @@ export function DashboardSidebar({ activeSection, profileActive = false }: Dashb
     }
   }, [playbackRunning])
 
-  const handleSimulationAction = useCallback(async () => {
+  const handleStartSimulation = useCallback(async () => {
     if (!isAdmin) {
       setSimulationError('시뮬레이션 제어는 ADMIN 계정만 가능합니다.')
       return
@@ -112,13 +113,23 @@ export function DashboardSidebar({ activeSection, profileActive = false }: Dashb
     setSimulationError('')
 
     try {
-      if (!playbackRunning) {
-        const startResponse = await startPlayback()
-        setPlaybackRunning(startResponse.data.running)
-        notifySimulationChange()
-        return
-      }
+      const startResponse = await startPlayback()
+      setPlaybackRunning(startResponse.data.running)
+      notifySimulationChange()
+    } catch (error) {
+      setSimulationError(error instanceof Error ? error.message : '시뮬레이션 API 호출 실패')
+    } finally {
+      setSimulationBusy(false)
+    }
+  }, [isAdmin, plantId])
 
+  const handleTriggerHighPowerAnomaly = useCallback(async () => {
+    if (!isAdmin || !playbackRunning || !plantId) {
+      return
+    }
+    setSimulationBusy(true)
+    setSimulationError('')
+    try {
       await triggerPowerAnomaly({
         plantId,
         anomalySeverity: 'HIGH',
@@ -128,11 +139,62 @@ export function DashboardSidebar({ activeSection, profileActive = false }: Dashb
       })
       notifySimulationChange()
     } catch (error) {
-      setSimulationError(error instanceof Error ? error.message : '시뮬레이션 API 호출 실패')
+      setSimulationError(error instanceof Error ? error.message : '이상 트리거 호출 실패')
     } finally {
       setSimulationBusy(false)
     }
-  }, [isAdmin, plantId, playbackRunning])
+  }, [isAdmin, playbackRunning, plantId])
+
+  const handleTriggerDemoAction = useCallback(
+    async (action: 'power-high' | 'power-medium' | 'vision-crack' | 'vision-dirt') => {
+      if (!isAdmin || !playbackRunning || !plantId) {
+        return
+      }
+
+      setSimulationBusy(true)
+      setSimulationError('')
+
+      try {
+        if (action === 'power-high') {
+          await triggerPowerAnomaly({
+            plantId,
+            anomalySeverity: 'HIGH',
+            differencePercentage: 42,
+            durationHours: 2,
+          })
+        } else if (action === 'power-medium') {
+          await triggerPowerAnomaly({
+            plantId,
+            anomalySeverity: 'MEDIUM',
+            differencePercentage: 18,
+            durationHours: 2,
+          })
+        } else if (action === 'vision-crack') {
+          await triggerVisionAnomaly({
+            plantId,
+            anomalyType: 'CRACK',
+            confidence: 0.94,
+            imageUrl: 'http://localhost:8080/images/crack.jpg',
+            xaiExplanation: '외부 충격으로 인한 선형 크랙 감지 (우측 상단 모서리)',
+          })
+        } else {
+          await triggerVisionAnomaly({
+            plantId,
+            anomalyType: 'DIRT',
+            confidence: 0.75,
+            imageUrl: 'http://localhost:8080/images/pollution.jpg',
+            xaiExplanation: '패널 하단부 조류 분변 및 먼지 누적 감지',
+          })
+        }
+        notifySimulationChange()
+      } catch (error) {
+        setSimulationError(error instanceof Error ? error.message : '시연 트리거 호출 실패')
+      } finally {
+        setSimulationBusy(false)
+      }
+    },
+    [isAdmin, playbackRunning, plantId],
+  )
 
   const handleStopSimulation = useCallback(async () => {
     if (!isAdmin || !playbackRunning) {
@@ -153,7 +215,7 @@ export function DashboardSidebar({ activeSection, profileActive = false }: Dashb
     }
   }, [isAdmin, playbackRunning])
 
-  const simulationButtonLabel = playbackRunning ? '이상 감지 트리거' : '시뮬레이션 시작'
+  const simulationButtonLabel = playbackRunning ? '시뮬레이션 실행 중' : '시뮬레이션 시작'
 
   return (
     <aside className={styles.sidebar} aria-label="대시보드 사이드바">
@@ -212,24 +274,70 @@ export function DashboardSidebar({ activeSection, profileActive = false }: Dashb
             ]
               .filter(Boolean)
               .join(' ')}
-            disabled={simulationBusy || !isAdmin || !plantId}
+            disabled={simulationBusy || !isAdmin || !plantId || playbackRunning}
             aria-label={
               !isAdmin
                 ? '시뮬레이션 제어 (ADMIN 전용)'
                 : playbackRunning
-                  ? '가상 시간 재생 중 · POWER 이상 감지 트리거'
+                  ? '가상 시간 시뮬레이션 재생 중'
                   : '가상 시간 시뮬레이션 재생 시작'
             }
-            onClick={() => void handleSimulationAction()}
+            onClick={() => void handleStartSimulation()}
           >
             <span className={styles.anomalyActionIcon} aria-hidden="true">
-              {playbackRunning ? '⚡' : '▶'}
+              {playbackRunning ? '⏵' : '▶'}
             </span>
             <span>{simulationButtonLabel}</span>
             {openAnomalyCount > 0 ? (
               <strong className={styles.anomalyActionBadge}>{openAnomalyCount}</strong>
             ) : null}
           </button>
+          {playbackRunning ? (
+            <>
+              <button
+                type="button"
+                className={styles.triggerButton}
+                disabled={simulationBusy || !isAdmin || !plantId}
+                onClick={() => void handleTriggerHighPowerAnomaly()}
+              >
+                이상 트리거
+              </button>
+              <div className={styles.demoTriggerGrid}>
+                <button
+                  type="button"
+                  className={[styles.demoTriggerButton, styles.demoTriggerHigh].join(' ')}
+                  disabled={simulationBusy || !isAdmin || !plantId}
+                  onClick={() => void handleTriggerDemoAction('power-high')}
+                >
+                  발전량 급락
+                </button>
+                <button
+                  type="button"
+                  className={[styles.demoTriggerButton, styles.demoTriggerMedium].join(' ')}
+                  disabled={simulationBusy || !isAdmin || !plantId}
+                  onClick={() => void handleTriggerDemoAction('power-medium')}
+                >
+                  발전량 저하
+                </button>
+                <button
+                  type="button"
+                  className={[styles.demoTriggerButton, styles.demoTriggerVisionHigh].join(' ')}
+                  disabled={simulationBusy || !isAdmin || !plantId}
+                  onClick={() => void handleTriggerDemoAction('vision-crack')}
+                >
+                  패널 크랙 감지
+                </button>
+                <button
+                  type="button"
+                  className={[styles.demoTriggerButton, styles.demoTriggerVisionLow].join(' ')}
+                  disabled={simulationBusy || !isAdmin || !plantId}
+                  onClick={() => void handleTriggerDemoAction('vision-dirt')}
+                >
+                  패널 오염 감지
+                </button>
+              </div>
+            </>
+          ) : null}
           {playbackRunning ? (
             <button
               type="button"

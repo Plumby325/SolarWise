@@ -24,6 +24,7 @@ export {
   startPlayback,
   stopPlayback,
   triggerPowerAnomaly,
+  triggerVisionAnomaly,
 } from './simulation'
 export { login, saveAuthSession, signup, getCurrentUser } from './auth'
 export type {
@@ -45,6 +46,6 @@ export type {
   TimelineTimePoint,
   UpdateAnomalyStatusResponse,
 } from './dashboard'
-export type { PowerAnomalyTriggerBody, SimulationPlaybackStatus } from './simulation'
+export type { PowerAnomalyTriggerBody, SimulationPlaybackStatus, VisionAnomalyTriggerBody } from './simulation'
 export type { LoginRequest, LoginResponse, SignupRequest, UserResponse } from './auth'
 export type { ChatMessage, ChatSession, SendChatMessageBody } from './chat'

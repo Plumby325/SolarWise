@@ -1,5 +1,5 @@
 import type { EChartsCoreOption } from 'echarts/core'
-import type { ForecastPoint, MeasurementPoint } from '@/api'
+import type { DashboardTimelineResponse, ForecastPoint, MeasurementPoint } from '@/api'
 
 /** 예측 차트 실측 브릿지용: 항상 이 구간만 조회 (실시간 차트 1h/12h/1d와 무관) */
 export const FORECAST_BRIDGE_MEASUREMENT_WINDOW_MS = 24 * 60 * 60 * 1000
@@ -244,6 +244,194 @@ export function buildForecastComboChartOption(params: {
             }
           : undefined,
         data: forecastData,
+      },
+    ],
+  }
+}
+
+function formatMonthDayTime(value: string) {
+  const date = new Date(parseBackendDateTime(value))
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${month}.${day} ${hours}:${minutes}`
+}
+
+export function buildTimelineForecastChartOption(
+  timeline: DashboardTimelineResponse | null,
+  errorMessage: string,
+): EChartsCoreOption {
+  const actualSeries = Array.isArray(timeline?.actualSeries) ? timeline.actualSeries : []
+  const predictionSeries = Array.isArray(timeline?.predictionSeries) ? timeline.predictionSeries : []
+  const gapSeries = Array.isArray(timeline?.gapSeries) ? timeline.gapSeries : []
+  const hasData = actualSeries.length > 0 || predictionSeries.length > 0
+
+  if (!timeline || !hasData) {
+    return {
+      graphic: {
+        type: 'text',
+        left: 'center',
+        top: 'middle',
+        style: {
+          text: errorMessage || '타임라인 API 데이터 없음',
+          fill: '#888780',
+          fontSize: 13,
+          fontWeight: 600,
+        },
+      },
+    }
+  }
+
+  const tsSet = new Set<string>()
+  actualSeries.forEach((point) => tsSet.add(point.ts))
+  predictionSeries.forEach((point) => tsSet.add(point.ts))
+  const tsList = [...tsSet].sort((a, b) => parseBackendDateTime(a) - parseBackendDateTime(b))
+  const labels = tsList.map(formatMonthDayTime)
+  const hasInsufficientPoints = tsList.length < 2
+
+  const actualByTs = new Map(actualSeries.map((point) => [point.ts, point.value]))
+  const predictionByTs = new Map(predictionSeries.map((point) => [point.ts, point.value]))
+  const gapByTs = new Map(gapSeries.map((point) => [point.ts, point.absGap]))
+  const fallbackGap = gapSeries.length > 0 ? Math.max(0, gapSeries[gapSeries.length - 1].absGap) : 0
+
+  const actualData = tsList.map((ts) => {
+    const value = actualByTs.get(ts)
+    return value == null ? null : roundChartValue(value)
+  })
+
+  const predictionData = tsList.map((ts) => {
+    const value = predictionByTs.get(ts)
+    return value == null ? null : roundChartValue(value)
+  })
+
+  const lowerBandData = tsList.map((ts) => {
+    const prediction = predictionByTs.get(ts)
+    if (prediction == null) {
+      return null
+    }
+    const gap = Math.max(0, gapByTs.get(ts) ?? fallbackGap)
+    return roundChartValue(Math.max(0, prediction - gap))
+  })
+
+  const bandHeightData = tsList.map((ts) => {
+    const prediction = predictionByTs.get(ts)
+    if (prediction == null) {
+      return null
+    }
+    const gap = Math.max(0, gapByTs.get(ts) ?? fallbackGap)
+    return roundChartValue(gap * 2)
+  })
+
+  const chartValues = [
+    ...actualSeries.map((point) => point.value),
+    ...predictionSeries.map((point) => point.value),
+    ...predictionSeries.map((point) => Math.max(0, point.value - fallbackGap)),
+    ...predictionSeries.map((point) => point.value + fallbackGap),
+  ]
+
+  const currentIndex = tsList.findIndex((ts) => ts === timeline.virtualNow)
+
+  return {
+    color: ['#1d9e75', '#185fa5'],
+    grid: { top: 16, right: 16, bottom: 34, left: 48 },
+    graphic: hasInsufficientPoints
+      ? {
+          type: 'text',
+          right: 16,
+          top: 8,
+          style: {
+            text: '시계열 포인트 부족 (최소 2개 필요)',
+            fill: '#a08f7b',
+            fontSize: 11,
+            fontWeight: 600,
+          },
+        }
+      : undefined,
+    tooltip: {
+      trigger: 'axis',
+      valueFormatter: (value: unknown) => (typeof value === 'number' ? `${value} kW` : '-'),
+    },
+    legend: {
+      data: ['실제 발전량', '예측 발전량', '오차범위'],
+      bottom: 0,
+      left: 0,
+      itemWidth: 8,
+      itemHeight: 8,
+      textStyle: { color: '#5f5e5a', fontSize: 9 },
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: labels,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: '#c4c2bb', fontSize: 9, hideOverlap: true },
+    },
+    yAxis: {
+      type: 'value',
+      min: 0,
+      max: getPowerAxisMax(chartValues),
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: '#c4c2bb', fontSize: 9 },
+      splitLine: { lineStyle: { color: '#f5f3ef' } },
+    },
+    series: [
+      {
+        name: '실제 발전량',
+        type: 'line',
+        smooth: true,
+        symbol: actualSeries.length < 2 ? 'circle' : 'none',
+        symbolSize: actualSeries.length < 2 ? 8 : 0,
+        lineStyle: { width: 3 },
+        data: actualData,
+      },
+      {
+        name: '오차범위-하한',
+        type: 'line',
+        stack: 'timeline-error-band',
+        symbol: 'none',
+        lineStyle: { opacity: 0 },
+        areaStyle: { opacity: 0 },
+        emphasis: { disabled: true },
+        tooltip: { show: false },
+        data: lowerBandData,
+      },
+      {
+        name: '오차범위',
+        type: 'line',
+        stack: 'timeline-error-band',
+        symbol: 'none',
+        lineStyle: { opacity: 0 },
+        areaStyle: { color: 'rgba(24, 95, 165, 0.14)' },
+        emphasis: { disabled: true },
+        tooltip: { show: false },
+        data: bandHeightData,
+      },
+      {
+        name: '예측 발전량',
+        type: 'line',
+        smooth: true,
+        symbol: predictionSeries.length < 2 ? 'circle' : 'none',
+        symbolSize: predictionSeries.length < 2 ? 8 : 0,
+        lineStyle: { width: 3, type: 'dashed' },
+        markLine: currentIndex >= 0
+          ? {
+              symbol: 'none',
+              silent: true,
+              lineStyle: { color: '#8e8c86', width: 1.5 },
+              label: {
+                show: true,
+                formatter: '현재',
+                position: 'insideEndBottom',
+                color: '#8e8c86',
+                fontSize: 11,
+              },
+              data: [{ xAxis: currentIndex }],
+            }
+          : undefined,
+        data: predictionData,
       },
     ],
   }

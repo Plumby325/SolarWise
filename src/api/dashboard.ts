@@ -127,6 +127,101 @@ export type DashboardTimelineQuery = {
   to?: string
 }
 
+function normalizeTimelineResponse(raw: unknown): DashboardTimelineResponse {
+  const source = (raw ?? {}) as Record<string, unknown>
+  const actualSeriesRaw = Array.isArray(source.actualSeries)
+    ? source.actualSeries
+    : Array.isArray(source.actual_series)
+      ? source.actual_series
+      : []
+  const predictionSeriesRaw = Array.isArray(source.predictionSeries)
+    ? source.predictionSeries
+    : Array.isArray(source.prediction_series)
+      ? source.prediction_series
+      : []
+  const gapSeriesRaw = Array.isArray(source.gapSeries)
+    ? source.gapSeries
+    : Array.isArray(source.gap_series)
+      ? source.gap_series
+      : []
+  const anomalyMarkersRaw = Array.isArray(source.anomalyMarkers)
+    ? source.anomalyMarkers
+    : Array.isArray(source.anomaly_markers)
+      ? source.anomaly_markers
+      : []
+
+  return {
+    plantId: typeof source.plantId === 'number' ? source.plantId : Number(source.plant_id ?? 0),
+    range: (typeof source.range === 'string' ? source.range : 'DAY') as TimelineRange,
+    virtualNow: typeof source.virtualNow === 'string' ? source.virtualNow : String(source.virtual_now ?? ''),
+    windowStart: typeof source.windowStart === 'string' ? source.windowStart : String(source.window_start ?? ''),
+    windowEnd: typeof source.windowEnd === 'string' ? source.windowEnd : String(source.window_end ?? ''),
+    forecastEnd: typeof source.forecastEnd === 'string' ? source.forecastEnd : String(source.forecast_end ?? ''),
+    actualSeries: actualSeriesRaw
+      .map((point) => {
+        if (!point || typeof point !== 'object') {
+          return null
+        }
+        const row = point as Record<string, unknown>
+        if (typeof row.ts !== 'string' || typeof row.value !== 'number') {
+          return null
+        }
+        return { ts: row.ts, value: row.value }
+      })
+      .filter((point): point is TimelineTimePoint => point != null),
+    predictionSeries: predictionSeriesRaw
+      .map((point) => {
+        if (!point || typeof point !== 'object') {
+          return null
+        }
+        const row = point as Record<string, unknown>
+        if (typeof row.ts !== 'string' || typeof row.value !== 'number') {
+          return null
+        }
+        return { ts: row.ts, value: row.value }
+      })
+      .filter((point): point is TimelineTimePoint => point != null),
+    gapSeries: gapSeriesRaw
+      .map((point) => {
+        if (!point || typeof point !== 'object') {
+          return null
+        }
+        const row = point as Record<string, unknown>
+        if (typeof row.ts !== 'string' || typeof row.absGap !== 'number' || typeof row.gapRate !== 'number') {
+          return null
+        }
+        return { ts: row.ts, absGap: row.absGap, gapRate: row.gapRate }
+      })
+      .filter((point): point is TimelineGapPoint => point != null),
+    anomalyMarkers: anomalyMarkersRaw
+      .map((marker) => {
+        if (!marker || typeof marker !== 'object') {
+          return null
+        }
+        const row = marker as Record<string, unknown>
+        if (
+          typeof row.eventId !== 'number'
+          || typeof row.ts !== 'string'
+          || typeof row.type !== 'string'
+          || typeof row.severity !== 'string'
+          || typeof row.status !== 'string'
+          || typeof row.summary !== 'string'
+        ) {
+          return null
+        }
+        return {
+          eventId: row.eventId,
+          ts: row.ts,
+          type: row.type,
+          severity: row.severity,
+          status: row.status,
+          summary: row.summary,
+        }
+      })
+      .filter((marker): marker is TimelineAnomalyMarker => marker != null),
+  }
+}
+
 export function getDashboardTimeline(plantId: number, query: DashboardTimelineQuery = {}) {
   const params = new URLSearchParams()
 
@@ -143,9 +238,12 @@ export function getDashboardTimeline(plantId: number, query: DashboardTimelineQu
   }
 
   const qs = params.toString()
-  return apiClient<ApiResponse<DashboardTimelineResponse>>(
+  return apiClient<ApiResponse<unknown>>(
     `/api/v1/plants/${plantId}/dashboard/timeline${qs ? `?${qs}` : ''}`,
-  )
+  ).then((response) => ({
+    ...response,
+    data: normalizeTimelineResponse(response.data),
+  }))
 }
 
 export function getMeasurements(plantId: number, from?: string, to?: string) {
@@ -168,7 +266,54 @@ export function getDashboardSummary(plantId: number) {
 }
 
 export function getForecast(plantId: number) {
-  return apiClient<ApiResponse<ForecastResponse>>(`/api/v1/plants/${plantId}/forecasts`)
+  return apiClient<ApiResponse<unknown>>(`/api/v1/plants/${plantId}/forecasts`).then((response) => {
+    const source = (response.data ?? {}) as Record<string, unknown>
+    const rawSeries = Array.isArray(source.forecast_series)
+      ? source.forecast_series
+      : Array.isArray(source.series)
+        ? source.series
+        : []
+
+    const forecastSeries = rawSeries
+      .map((item) => {
+        if (!item || typeof item !== 'object') {
+          return null
+        }
+        const row = item as Record<string, unknown>
+        const targetTime = typeof row.target_time === 'string'
+          ? row.target_time
+          : typeof row.targetTime === 'string'
+            ? row.targetTime
+            : null
+        const predictedPowerKw = typeof row.predicted_power_kw === 'number'
+          ? row.predicted_power_kw
+          : typeof row.predictedPowerKw === 'number'
+            ? row.predictedPowerKw
+            : null
+        if (!targetTime || predictedPowerKw == null) {
+          return null
+        }
+        return {
+          target_time: targetTime,
+          predicted_power_kw: predictedPowerKw,
+          confidence: typeof row.confidence === 'number' ? row.confidence : null,
+          model_version: typeof row.model_version === 'string' ? row.model_version : null,
+          model_notes: typeof row.model_notes === 'string' ? row.model_notes : null,
+        } as ForecastPoint
+      })
+      .filter((item): item is ForecastPoint => item != null)
+
+    const normalized: ForecastResponse = {
+      plant_id: typeof source.plant_id === 'string' ? source.plant_id : String(source.plantId ?? plantId),
+      forecast_series: forecastSeries,
+      explanations: Array.isArray(source.explanations) ? (source.explanations as XaiExplanationPoint[]) : [],
+    }
+
+    return {
+      ...response,
+      data: normalized,
+    }
+  })
 }
 
 export function getForecastExplanation(plantId: number) {

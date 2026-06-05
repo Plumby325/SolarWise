@@ -227,12 +227,12 @@
 }
 
 .anomalyActionButtonRunning {
-  background: #ba7517;
-  box-shadow: 0 2px 10px rgba(186, 117, 23, 0.35);
+  background: #1d9e75;
+  box-shadow: 0 2px 10px rgba(29, 158, 117, 0.35);
 }
 
 .anomalyActionButtonRunning:hover:not(:disabled) {
-  background: #a86814;
+  background: #188764;
 }
 
 .anomalyActionButtonDisabled {
@@ -259,6 +259,75 @@
 .simulationStopButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.triggerButton {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #29445f;
+  border-radius: 8px;
+  color: #dbe9f6;
+  background: #132538;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.triggerButton:hover:not(:disabled) {
+  background: #1a324a;
+}
+
+.triggerButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.demoTriggerGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.demoTriggerButton {
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 1px solid #2b4562;
+  border-radius: 8px;
+  color: #e7f2ff;
+  background: #1a2e40;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.demoTriggerButton:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.demoTriggerButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.demoTriggerHigh {
+  border-color: rgba(226, 75, 74, 0.65);
+  background: rgba(226, 75, 74, 0.18);
+}
+
+.demoTriggerMedium {
+  border-color: rgba(245, 158, 11, 0.65);
+  background: rgba(245, 158, 11, 0.16);
+}
+
+.demoTriggerVisionHigh {
+  border-color: rgba(219, 39, 119, 0.65);
+  background: rgba(219, 39, 119, 0.16);
+}
+
+.demoTriggerVisionLow {
+  border-color: rgba(56, 189, 248, 0.65);
+  background: rgba(56, 189, 248, 0.16);
 }
 
 .simulationError {

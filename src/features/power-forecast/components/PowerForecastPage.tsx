@@ -1,20 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
-import { getForecast, getForecastExplanation, getMeasurements } from '@/api'
-import type { ForecastPoint, MeasurementPoint, XaiExplanationPoint } from '@/api'
+import { getDashboardTimeline, getForecast, getForecastExplanation, getMeasurements } from '@/api'
+import type { DashboardTimelineResponse, ForecastPoint, MeasurementPoint, XaiExplanationPoint } from '@/api'
 import {
   FORECAST_CHART_DUMMY_MESSAGE,
   FORECAST_BRIDGE_MEASUREMENT_WINDOW_MS,
   type ForecastHorizonId,
-  buildForecastComboChartOption,
+  buildTimelineForecastChartOption,
   createDummyBridgeMeasurements,
   createDummyForecastSeries,
-  filterForecastsByHorizon,
   isForecastChartDummyForced,
 } from '@/shared/charts/forecastComboChartOption'
 import { deriveShapFeatureContributions } from '@/shared/charts/xaiFeatureContributions'
 import { useDefaultPlant } from '@/shared/hooks/useDefaultPlant'
-import { DashboardSidebar } from '@/shared/layout/DashboardSidebar'
+import { DashboardSidebar, SIMULATION_CHANGE_EVENT } from '@/shared/layout/DashboardSidebar'
 import { EChart } from '@/shared/ui/EChart'
 import { formatLocalDateTimeForApi } from '@/shared/utils/dateFormat'
 import styles from './PowerForecastPage.module.css'
@@ -152,10 +151,52 @@ export function PowerForecastPage() {
   const isDummyForced = isForecastChartDummyForced()
   const [forecastHorizon, setForecastHorizon] = useState<ForecastHorizonId>('2d')
   const [forecasts, setForecasts] = useState<ForecastPoint[]>([])
+  const [timeline, setTimeline] = useState<DashboardTimelineResponse | null>(null)
+  const [timelineError, setTimelineError] = useState('')
   const [xaiExplanations, setXaiExplanations] = useState<XaiExplanationPoint[]>([])
   const [forecastError, setForecastError] = useState('')
   const [bridgeMeasurements, setBridgeMeasurements] = useState<MeasurementPoint[]>([])
   const [bridgeError, setBridgeError] = useState('')
+
+  useEffect(() => {
+    if (!defaultPlantId) {
+      setTimeline(null)
+      setTimelineError('발전소 데이터 없음')
+      return
+    }
+
+    let isActive = true
+    const futureHours = forecastHorizon === 'today' ? 24 : forecastHorizon === '2d' ? 48 : 72
+
+    const fetchTimeline = () => {
+      getDashboardTimeline(defaultPlantId, { range: 'DAY', futureHours })
+        .then((res) => {
+          if (!isActive) {
+            return
+          }
+          const hasData = res.data.actualSeries.length > 0 || res.data.predictionSeries.length > 0
+          setTimeline(res.data)
+          setTimelineError(hasData ? '' : '타임라인 API 데이터 없음')
+        })
+        .catch((error) => {
+          if (!isActive) {
+            return
+          }
+          setTimelineError(error instanceof Error ? error.message : '타임라인 API 조회 실패')
+        })
+    }
+
+    fetchTimeline()
+    const timer = window.setInterval(fetchTimeline, 1000)
+    const handleSimulationChange = () => fetchTimeline()
+    window.addEventListener(SIMULATION_CHANGE_EVENT, handleSimulationChange)
+
+    return () => {
+      isActive = false
+      window.clearInterval(timer)
+      window.removeEventListener(SIMULATION_CHANGE_EVENT, handleSimulationChange)
+    }
+  }, [defaultPlantId, forecastHorizon])
 
   useEffect(() => {
     if (!defaultPlantId) {
@@ -276,20 +317,9 @@ export function PowerForecastPage() {
     }
   }, [defaultPlantId, isDummyForced])
 
-  const filteredForecasts = useMemo(
-    () => filterForecastsByHorizon(forecasts, forecastHorizon),
-    [forecastHorizon, forecasts],
-  )
-
   const chartOption = useMemo<EChartsCoreOption>(
-    () =>
-      buildForecastComboChartOption({
-        bridgeMeasurements,
-        forecasts: filteredForecasts,
-        bridgeError,
-        forecastError,
-      }),
-    [bridgeError, bridgeMeasurements, forecastError, filteredForecasts],
+    () => buildTimelineForecastChartOption(timeline, timelineError || forecastError || bridgeError),
+    [bridgeError, forecastError, timeline, timelineError],
   )
   const summaryCards = useMemo(() => {
     const todayKwh = getTodayForecastEnergyKwh(forecasts)
