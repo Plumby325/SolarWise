@@ -6,3 +6,7 @@ matplotlib
 shap
 xgboost
 tensorflow
+
+fastapi
+uvicorn
+joblib
