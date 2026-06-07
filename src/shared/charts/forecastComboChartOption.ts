@@ -6,6 +6,7 @@ export const FORECAST_BRIDGE_MEASUREMENT_WINDOW_MS = 24 * 60 * 60 * 1000
 
 export const FORECAST_BRIDGE_TAIL_COUNT = 5
 export const FORECAST_ERROR_BAND_KW = 500
+export const TIMELINE_FORECAST_ERROR_BAND_KW = 150
 
 export type ForecastHorizonId = 'today' | '2d' | '3d'
 
@@ -293,7 +294,7 @@ export function buildTimelineForecastChartOption(
   const actualByTs = new Map(actualSeries.map((point) => [point.measuredAt, point.powerKw]))
   const predictionByTs = new Map(predictionSeries.map((point) => [point.measuredAt, point.powerKw]))
   const gapByTs = new Map(gapSeries.map((point) => [point.measuredAt, point.absoluteGap]))
-  const fallbackGap = gapSeries.length > 0 ? Math.max(0, gapSeries[gapSeries.length - 1].absoluteGap) : 0
+  const virtualNowMs = parseBackendDateTime(timeline.virtualNow)
 
   const actualData = tsList.map((ts) => {
     const value = actualByTs.get(ts)
@@ -310,8 +311,7 @@ export function buildTimelineForecastChartOption(
     if (prediction == null) {
       return null
     }
-    const gap = Math.max(0, gapByTs.get(ts) ?? fallbackGap)
-    return roundChartValue(Math.max(0, prediction - gap))
+    return roundChartValue(Math.max(0, prediction - TIMELINE_FORECAST_ERROR_BAND_KW))
   })
 
   const bandHeightData = tsList.map((ts) => {
@@ -319,18 +319,15 @@ export function buildTimelineForecastChartOption(
     if (prediction == null) {
       return null
     }
-    const gap = Math.max(0, gapByTs.get(ts) ?? fallbackGap)
-    return roundChartValue(gap * 2)
+    return roundChartValue(TIMELINE_FORECAST_ERROR_BAND_KW * 2)
   })
 
   const chartValues = [
     ...actualSeries.map((point) => point.powerKw),
     ...predictionSeries.map((point) => point.powerKw),
-    ...predictionSeries.map((point) => Math.max(0, point.powerKw - fallbackGap)),
-    ...predictionSeries.map((point) => point.powerKw + fallbackGap),
+    ...predictionSeries.map((point) => Math.max(0, point.powerKw - TIMELINE_FORECAST_ERROR_BAND_KW)),
+    ...predictionSeries.map((point) => point.powerKw + TIMELINE_FORECAST_ERROR_BAND_KW),
   ]
-
-  const virtualNowMs = parseBackendDateTime(timeline.virtualNow)
   const currentIndex = tsList.length === 0
     ? -1
     : tsList.reduce((bestIndex, ts, index) => {
@@ -357,7 +354,30 @@ export function buildTimelineForecastChartOption(
       : undefined,
     tooltip: {
       trigger: 'axis',
-      valueFormatter: (value: unknown) => (typeof value === 'number' ? `${value} kW` : '-'),
+      formatter: (params: Array<{ dataIndex?: number }>) => {
+        const first = params[0]
+        const dataIndex = first?.dataIndex
+        if (dataIndex == null || dataIndex < 0 || dataIndex >= tsList.length) {
+          return ''
+        }
+        const ts = tsList[dataIndex]
+        const actual = actualByTs.get(ts)
+        const prediction = predictionByTs.get(ts)
+        const absGap = actual != null && prediction != null
+          ? (gapByTs.get(ts) ?? Math.abs(actual - prediction))
+          : (gapByTs.get(ts) ?? null)
+        const gapRate = actual != null && prediction != null && prediction > 0
+          ? absGap! / prediction
+          : null
+
+        return [
+          `<strong>${formatMonthDayTime(ts)}</strong>`,
+          `실측: ${actual != null ? `${roundChartValue(actual)} kW` : '-'}`,
+          `예측: ${prediction != null ? `${roundChartValue(prediction)} kW` : '-'}`,
+          `오차: ${absGap != null ? `${roundChartValue(absGap)} kW` : '-'}`,
+          `괴리율: ${gapRate != null ? `${roundChartValue(gapRate * 100)}%` : '-'}`,
+        ].join('<br/>')
+      },
     },
     legend: {
       data: ['실제 발전량', '예측 발전량', '오차범위'],

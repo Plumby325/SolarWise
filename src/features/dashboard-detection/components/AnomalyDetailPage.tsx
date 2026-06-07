@@ -359,6 +359,28 @@ export function AnomalyDetailPage() {
               <p>{errorMessage || (event ? `${event.severity} · ${event.status}` : '상세 조회할 이벤트를 선택해 주세요.')}</p>
             </article>
 
+            <section className={styles.sectionBlock} aria-labelledby="grad-cam-title">
+              <h3 id="grad-cam-title">GRAD-CAM 히트맵</h3>
+              <div className={styles.heatmapGrid}>
+                <article className={styles.heatmapCard}>
+                  <header>원본 이미지</header>
+                  {event?.imageUrl ? (
+                    <img className={styles.heatmapImage} src={event.imageUrl} alt="이상 감지 원본 패널 이미지" />
+                  ) : (
+                    <div className={styles.heatmapPlaceholder}>원본 이미지가 아직 제공되지 않았습니다.</div>
+                  )}
+                </article>
+                <article className={styles.heatmapCard}>
+                  <header>GRAD-CAM 히트맵</header>
+                  {event?.heatmapUrl ? (
+                    <img className={styles.heatmapImage} src={event.heatmapUrl} alt="GRAD-CAM 히트맵 이미지" />
+                  ) : (
+                    <div className={styles.heatmapPlaceholder}>히트맵 이미지가 아직 제공되지 않았습니다.</div>
+                  )}
+                </article>
+              </div>
+            </section>
+
             <section className={styles.sectionBlock} aria-labelledby="measurement-title">
               <h3 id="measurement-title">이벤트 메타 정보</h3>
               <div className={styles.measurementBox}>

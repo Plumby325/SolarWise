@@ -4,7 +4,6 @@ import type { EChartsCoreOption } from 'echarts/core'
 import {
   getAnomalies,
   getForecast,
-  getForecastExplanation,
   getPlants,
 } from '@/api'
 import type {
@@ -337,39 +336,6 @@ export function DashboardPage() {
 
     fetchForecasts()
     const pollingTimer = window.setInterval(fetchForecasts, 30000)
-
-    return () => {
-      isActive = false
-      window.clearInterval(pollingTimer)
-    }
-  }, [refreshKey, selectedPlantId])
-
-  useEffect(() => {
-    if (!selectedPlantId) {
-      setXaiExplanations([])
-      return
-    }
-
-    let isActive = true
-
-    const fetchForecastExplanations = () => {
-      getForecastExplanation(selectedPlantId)
-        .then((explanationResponse) => {
-          if (!isActive) {
-            return
-          }
-          setXaiExplanations(explanationResponse.data.explanations)
-        })
-        .catch((error) => {
-          if (!isActive) {
-            return
-          }
-          console.error('SHAP 설명 조회 실패:', error)
-        })
-    }
-
-    fetchForecastExplanations()
-    const pollingTimer = window.setInterval(fetchForecastExplanations, 30000)
 
     return () => {
       isActive = false

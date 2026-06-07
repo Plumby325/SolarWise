@@ -79,6 +79,8 @@ export type AnomalyEvent = {
   cause: string | null
   recommendedAction: string | null
   xaiExplanation: string | null
+  imageUrl?: string | null
+  heatmapUrl?: string | null
 }
 
 export type UpdateAnomalyStatusResponse = {
@@ -196,6 +198,29 @@ function normalizeTimelineResponse(raw: unknown): DashboardTimelineResponse {
     return null
   }
 
+  const normalizeGapRate = (row: Record<string, unknown>) => {
+    if (typeof row.gapRate === 'number') {
+      return row.gapRate
+    }
+    if (typeof row.gap_rate === 'number') {
+      return row.gap_rate
+    }
+    return null
+  }
+
+  const normalizeLooseNumber = (value: unknown) => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value
+    }
+    if (typeof value === 'string') {
+      const parsed = Number(value)
+      if (Number.isFinite(parsed)) {
+        return parsed
+      }
+    }
+    return null
+  }
+
   const normalizeDetectedAt = (row: Record<string, unknown>) => {
     if (typeof row.detectedAt === 'string') {
       return row.detectedAt
@@ -264,11 +289,30 @@ function normalizeTimelineResponse(raw: unknown): DashboardTimelineResponse {
         }
         const row = point as Record<string, unknown>
         const measuredAt = normalizeMeasuredAt(row)
-        const absoluteGap = normalizeGap(row)
-        if (!measuredAt || absoluteGap == null || typeof row.gapRate !== 'number') {
+        const actual =
+          normalizeLooseNumber(row.actual)
+          ?? normalizeLooseNumber(row.actualPowerKw)
+          ?? normalizeLooseNumber(row.actual_power_kw)
+        const prediction =
+          normalizeLooseNumber(row.prediction)
+          ?? normalizeLooseNumber(row.predictionPowerKw)
+          ?? normalizeLooseNumber(row.prediction_power_kw)
+
+        const absoluteGapFromPayload = normalizeGap(row)
+        const absoluteGap = absoluteGapFromPayload != null
+          ? absoluteGapFromPayload
+          : (actual != null && prediction != null ? Math.abs(actual - prediction) : null)
+
+        if (!measuredAt || absoluteGap == null) {
           return null
         }
-        return { measuredAt, absoluteGap, gapRate: row.gapRate }
+
+        const rawGapRate = normalizeGapRate(row)
+        const gapRate = rawGapRate != null
+          ? rawGapRate
+          : (prediction != null && prediction > 0 ? absoluteGap / prediction : 0)
+
+        return { measuredAt, absoluteGap, gapRate }
       })
       .filter((point): point is TimelineGapPoint => point != null),
     anomalyMarkers: anomalyMarkersRaw

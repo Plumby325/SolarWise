@@ -83,14 +83,13 @@ function mapSeriesToCategories(tsKeys: string[], points: { measuredAt: string; p
   })
 }
 
-function mapGapToCategories(tsKeys: string[], timeline: DashboardTimelineResponse) {
-  const gapByTs = new Map(timeline.gapSeries.map((point) => [point.measuredAt, point.gapRate]))
-
-  return tsKeys.map((ts) => {
-    const rate = gapByTs.get(ts)
-
-    return rate == null ? null : roundChartValue(rate * 100)
-  })
+function getP95(values: number[]) {
+  if (values.length === 0) {
+    return null
+  }
+  const sorted = [...values].sort((a, b) => a - b)
+  const index = Math.floor((sorted.length - 1) * 0.95)
+  return sorted[Math.max(0, Math.min(index, sorted.length - 1))]
 }
 
 export function buildDashboardTimelineChartOption(
@@ -116,7 +115,40 @@ export function buildDashboardTimelineChartOption(
   const { labels, tsKeys } = buildCategoryAxis(timeline)
   const actualData = mapSeriesToCategories(tsKeys, timeline.actualSeries)
   const predictionData = mapSeriesToCategories(tsKeys, timeline.predictionSeries)
-  const gapData = mapGapToCategories(tsKeys, timeline)
+  const actualByTs = new Map(timeline.actualSeries.map((point) => [point.measuredAt, point.powerKw]))
+  const predictionByTs = new Map(timeline.predictionSeries.map((point) => [point.measuredAt, point.powerKw]))
+  const gapByTs = new Map(timeline.gapSeries.map((point) => [point.measuredAt, point.absoluteGap]))
+  const rawGapValues = tsKeys
+    .map((ts) => {
+      const actual = actualByTs.get(ts)
+      const prediction = predictionByTs.get(ts)
+      if (actual == null || prediction == null) {
+        return null
+      }
+      return gapByTs.get(ts) ?? Math.abs(actual - prediction)
+    })
+    .filter((value): value is number => value != null && Number.isFinite(value))
+  const gapP95 = getP95(rawGapValues)
+  const gapDisplayCap = gapP95 != null ? Math.max(gapP95, 1) : null
+
+  const gapAreaBaseData = tsKeys.map((ts) => {
+    const actual = actualByTs.get(ts)
+    const prediction = predictionByTs.get(ts)
+    if (actual == null || prediction == null) {
+      return null
+    }
+    return roundChartValue(Math.min(actual, prediction))
+  })
+  const gapAreaHeightData = tsKeys.map((ts) => {
+    const actual = actualByTs.get(ts)
+    const prediction = predictionByTs.get(ts)
+    if (actual == null || prediction == null) {
+      return null
+    }
+    const rawGap = gapByTs.get(ts) ?? Math.abs(actual - prediction)
+    const clampedGap = gapDisplayCap == null ? rawGap : Math.min(rawGap, gapDisplayCap)
+    return roundChartValue(clampedGap)
+  })
 
   const chartValues = [
     ...timeline.actualSeries.map((point) => point.powerKw),
@@ -147,14 +179,37 @@ export function buildDashboardTimelineChartOption(
     .filter((item): item is NonNullable<typeof item> => item != null)
 
   return {
-    color: ['#1d9e75', '#185fa5', 'rgba(226, 75, 74, 0.25)'],
+    color: ['#1d9e75', '#185fa5', 'rgba(226, 75, 74, 0.2)'],
     grid: { top: 24, right: 16, bottom: 34, left: 48 },
     tooltip: {
       trigger: 'axis',
-      valueFormatter: (value: unknown) => (typeof value === 'number' ? `${value}` : '-'),
+      formatter: (params: Array<{ dataIndex?: number }>) => {
+        const first = params[0]
+        const dataIndex = first?.dataIndex
+        if (dataIndex == null || dataIndex < 0 || dataIndex >= tsKeys.length) {
+          return ''
+        }
+        const ts = tsKeys[dataIndex]
+        const actual = actualByTs.get(ts)
+        const prediction = predictionByTs.get(ts)
+        const absGap = actual != null && prediction != null
+          ? (gapByTs.get(ts) ?? Math.abs(actual - prediction))
+          : null
+        const gapRate = actual != null && prediction != null && prediction > 0
+          ? absGap! / prediction
+          : null
+
+        return [
+          `<strong>${formatChartLabel(ts)}</strong>`,
+          `실측: ${actual != null ? `${roundChartValue(actual)} kW` : '-'}`,
+          `예측: ${prediction != null ? `${roundChartValue(prediction)} kW` : '-'}`,
+          `괴리: ${absGap != null ? `${roundChartValue(absGap)} kW` : '-'}`,
+          `괴리율: ${gapRate != null ? `${roundChartValue(gapRate * 100)}%` : '-'}`,
+        ].join('<br/>')
+      },
     },
     legend: {
-      data: ['실제 발전량', '예측 발전량', '괴리율(%)', '이상 이벤트'],
+      data: ['실제 발전량', '예측 발전량', '괴리영역', '이상 이벤트'],
       bottom: 0,
       left: 0,
       itemWidth: 8,
@@ -169,25 +224,16 @@ export function buildDashboardTimelineChartOption(
       axisTick: { show: false },
       axisLabel: { color: '#c4c2bb', fontSize: 9 },
     },
-    yAxis: [
-      {
-        type: 'value',
-        name: 'kW',
-        min: 0,
-        max: getPowerAxisMax(chartValues),
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: { color: '#c4c2bb', fontSize: 9 },
-        splitLine: { lineStyle: { color: '#f5f3ef' } },
-      },
-      {
-        type: 'value',
-        name: '괴리%',
-        min: 0,
-        max: 100,
-        show: false,
-      },
-    ],
+    yAxis: {
+      type: 'value',
+      name: 'kW',
+      min: 0,
+      max: getPowerAxisMax(chartValues),
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: '#c4c2bb', fontSize: 9 },
+      splitLine: { lineStyle: { color: '#f5f3ef' } },
+    },
     series: [
       {
         name: '실제 발전량',
@@ -215,14 +261,26 @@ export function buildDashboardTimelineChartOption(
         data: predictionData,
       },
       {
-        name: '괴리율(%)',
+        name: '괴리영역-기준선',
         type: 'line',
-        yAxisIndex: 1,
-        smooth: true,
+        stack: 'gap-area',
         symbol: 'none',
-        lineStyle: { width: 1, opacity: 0.6 },
+        lineStyle: { opacity: 0 },
+        areaStyle: { opacity: 0 },
+        emphasis: { disabled: true },
+        tooltip: { show: false },
+        data: gapAreaBaseData,
+      },
+      {
+        name: '괴리영역',
+        type: 'line',
+        stack: 'gap-area',
+        symbol: 'none',
+        lineStyle: { opacity: 0 },
         areaStyle: { color: 'rgba(226, 75, 74, 0.12)' },
-        data: gapData,
+        emphasis: { disabled: true },
+        tooltip: { show: false },
+        data: gapAreaHeightData,
       },
       {
         name: '이상 이벤트',

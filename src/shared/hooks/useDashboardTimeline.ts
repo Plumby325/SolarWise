@@ -3,7 +3,7 @@ import { getDashboardTimeline, getPlaybackStatus } from '@/api'
 import type { DashboardTimelineResponse, SimulationPlaybackStatus, TimelineRange } from '@/api'
 import { SIMULATION_CHANGE_EVENT } from '@/shared/layout/DashboardSidebar'
 
-const POLL_FAST_MS = 1000
+const POLL_FAST_MS = 5000
 const POLL_SLOW_MS = 5000
 
 export function useDashboardTimeline(plantId: number | null, refreshKey = 0) {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
-import { getForecast, getForecastExplanation, getMeasurements } from '@/api'
+import { getForecast, getMeasurements } from '@/api'
 import type { ForecastPoint, MeasurementPoint, XaiExplanationPoint } from '@/api'
 import {
   FORECAST_CHART_DUMMY_MESSAGE,
@@ -213,32 +213,6 @@ export function PowerForecastPage() {
     return () => {
       isActive = false
       window.clearInterval(timer)
-    }
-  }, [defaultPlantId, isDummyForced])
-
-  useEffect(() => {
-    if (!defaultPlantId || isDummyForced) {
-      return
-    }
-
-    let isActive = true
-    getForecastExplanation(defaultPlantId)
-      .then((res) => {
-        if (!isActive) {
-          return
-        }
-        if (res.data.explanations.length > 0) {
-          setXaiExplanations(res.data.explanations)
-        }
-      })
-      .catch(() => {
-        if (!isActive) {
-          return
-        }
-      })
-
-    return () => {
-      isActive = false
     }
   }, [defaultPlantId, isDummyForced])
 

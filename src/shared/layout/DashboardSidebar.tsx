@@ -131,28 +131,6 @@ export function DashboardSidebar({ activeSection, profileActive = false }: Dashb
     }
   }, [isAdmin, plantId])
 
-  const handleTriggerHighPowerAnomaly = useCallback(async () => {
-    if (!isAdmin || !playbackRunning || !plantId) {
-      return
-    }
-    setSimulationBusy(true)
-    setSimulationError('')
-    try {
-      await triggerPowerAnomaly({
-        plantId,
-        anomalySeverity: 'HIGH',
-        differencePercentage: 40,
-        durationHours: 2,
-        description: '시연용 미래 구간 발전량 저하',
-      })
-      notifySimulationChange()
-    } catch (error) {
-      setSimulationError(error instanceof Error ? error.message : '이상 트리거 호출 실패')
-    } finally {
-      setSimulationBusy(false)
-    }
-  }, [isAdmin, playbackRunning, plantId])
-
   const handleTriggerDemoAction = useCallback(
     async (action: 'power-high' | 'power-medium' | 'vision-crack' | 'vision-dirt') => {
       if (!isAdmin || !playbackRunning || !plantId) {
@@ -319,14 +297,6 @@ export function DashboardSidebar({ activeSection, profileActive = false }: Dashb
           </button>
           {playbackRunning ? (
             <>
-              <button
-                type="button"
-                className={styles.triggerButton}
-                disabled={simulationBusy || !isAdmin || !plantId}
-                onClick={() => void handleTriggerHighPowerAnomaly()}
-              >
-                이상 트리거
-              </button>
               <div className={styles.demoTriggerGrid}>
                 <button
                   type="button"
