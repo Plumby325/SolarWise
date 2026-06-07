@@ -6,7 +6,7 @@ export const FORECAST_BRIDGE_MEASUREMENT_WINDOW_MS = 24 * 60 * 60 * 1000
 
 export const FORECAST_BRIDGE_TAIL_COUNT = 5
 export const FORECAST_ERROR_BAND_KW = 500
-export const TIMELINE_FORECAST_ERROR_BAND_KW = 150
+export const TIMELINE_FORECAST_ERROR_BAND_KW = 60
 
 export type ForecastHorizonId = 'today' | '2d' | '3d'
 
@@ -311,7 +311,8 @@ export function buildTimelineForecastChartOption(
     if (prediction == null) {
       return null
     }
-    return roundChartValue(Math.max(0, prediction - TIMELINE_FORECAST_ERROR_BAND_KW))
+    const lowerBound = Math.max(0, prediction - TIMELINE_FORECAST_ERROR_BAND_KW)
+    return roundChartValue(lowerBound)
   })
 
   const bandHeightData = tsList.map((ts) => {
@@ -319,13 +320,15 @@ export function buildTimelineForecastChartOption(
     if (prediction == null) {
       return null
     }
-    return roundChartValue(TIMELINE_FORECAST_ERROR_BAND_KW * 2)
+    const lowerBound = Math.max(0, prediction - TIMELINE_FORECAST_ERROR_BAND_KW)
+    const upperBound = prediction + TIMELINE_FORECAST_ERROR_BAND_KW
+    return roundChartValue(upperBound - lowerBound)
   })
 
   const chartValues = [
     ...actualSeries.map((point) => point.powerKw),
     ...predictionSeries.map((point) => point.powerKw),
-    ...predictionSeries.map((point) => Math.max(0, point.powerKw - TIMELINE_FORECAST_ERROR_BAND_KW)),
+    ...predictionSeries.map((point) => point.powerKw - TIMELINE_FORECAST_ERROR_BAND_KW),
     ...predictionSeries.map((point) => point.powerKw + TIMELINE_FORECAST_ERROR_BAND_KW),
   ]
   const currentIndex = tsList.length === 0
@@ -411,13 +414,15 @@ export function buildTimelineForecastChartOption(
         smooth: true,
         symbol: actualSeries.length < 2 ? 'circle' : 'none',
         symbolSize: actualSeries.length < 2 ? 8 : 0,
-        lineStyle: { width: 3 },
+        lineStyle: { width: 3, color: '#1d9e75' },
+        itemStyle: { color: '#1d9e75' },
         data: actualData,
       },
       {
         name: '오차범위-하한',
         type: 'line',
         stack: 'timeline-error-band',
+        smooth: true,
         symbol: 'none',
         lineStyle: { opacity: 0 },
         areaStyle: { opacity: 0 },
@@ -429,6 +434,7 @@ export function buildTimelineForecastChartOption(
         name: '오차범위',
         type: 'line',
         stack: 'timeline-error-band',
+        smooth: true,
         symbol: 'none',
         lineStyle: { opacity: 0 },
         areaStyle: { color: 'rgba(24, 95, 165, 0.14)' },
@@ -442,7 +448,8 @@ export function buildTimelineForecastChartOption(
         smooth: true,
         symbol: predictionSeries.length < 2 ? 'circle' : 'none',
         symbolSize: predictionSeries.length < 2 ? 8 : 0,
-        lineStyle: { width: 3, type: 'dashed' },
+        lineStyle: { width: 3, type: 'dashed', color: '#185fa5' },
+        itemStyle: { color: '#185fa5' },
         markLine: currentIndex >= 0
           ? {
               symbol: 'none',

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { BarChart, LineChart, ScatterChart } from 'echarts/charts'
+import { BarChart, CustomChart, LineChart, ScatterChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, MarkLineComponent, TooltipComponent } from 'echarts/components'
 import { init, use } from 'echarts/core'
 import type { ECharts, EChartsCoreOption } from 'echarts/core'
@@ -8,6 +8,7 @@ import { CanvasRenderer } from 'echarts/renderers'
 use([
   BarChart,
   CanvasRenderer,
+  CustomChart,
   GridComponent,
   LegendComponent,
   LineChart,
