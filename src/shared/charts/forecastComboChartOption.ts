@@ -284,16 +284,16 @@ export function buildTimelineForecastChartOption(
   }
 
   const tsSet = new Set<string>()
-  actualSeries.forEach((point) => tsSet.add(point.ts))
-  predictionSeries.forEach((point) => tsSet.add(point.ts))
+  actualSeries.forEach((point) => tsSet.add(point.measuredAt))
+  predictionSeries.forEach((point) => tsSet.add(point.measuredAt))
   const tsList = [...tsSet].sort((a, b) => parseBackendDateTime(a) - parseBackendDateTime(b))
   const labels = tsList.map(formatMonthDayTime)
   const hasInsufficientPoints = tsList.length < 2
 
-  const actualByTs = new Map(actualSeries.map((point) => [point.ts, point.value]))
-  const predictionByTs = new Map(predictionSeries.map((point) => [point.ts, point.value]))
-  const gapByTs = new Map(gapSeries.map((point) => [point.ts, point.absGap]))
-  const fallbackGap = gapSeries.length > 0 ? Math.max(0, gapSeries[gapSeries.length - 1].absGap) : 0
+  const actualByTs = new Map(actualSeries.map((point) => [point.measuredAt, point.powerKw]))
+  const predictionByTs = new Map(predictionSeries.map((point) => [point.measuredAt, point.powerKw]))
+  const gapByTs = new Map(gapSeries.map((point) => [point.measuredAt, point.absoluteGap]))
+  const fallbackGap = gapSeries.length > 0 ? Math.max(0, gapSeries[gapSeries.length - 1].absoluteGap) : 0
 
   const actualData = tsList.map((ts) => {
     const value = actualByTs.get(ts)
@@ -324,13 +324,20 @@ export function buildTimelineForecastChartOption(
   })
 
   const chartValues = [
-    ...actualSeries.map((point) => point.value),
-    ...predictionSeries.map((point) => point.value),
-    ...predictionSeries.map((point) => Math.max(0, point.value - fallbackGap)),
-    ...predictionSeries.map((point) => point.value + fallbackGap),
+    ...actualSeries.map((point) => point.powerKw),
+    ...predictionSeries.map((point) => point.powerKw),
+    ...predictionSeries.map((point) => Math.max(0, point.powerKw - fallbackGap)),
+    ...predictionSeries.map((point) => point.powerKw + fallbackGap),
   ]
 
-  const currentIndex = tsList.findIndex((ts) => ts === timeline.virtualNow)
+  const virtualNowMs = parseBackendDateTime(timeline.virtualNow)
+  const currentIndex = tsList.length === 0
+    ? -1
+    : tsList.reduce((bestIndex, ts, index) => {
+        const bestDiff = Math.abs(parseBackendDateTime(tsList[bestIndex]) - virtualNowMs)
+        const currentDiff = Math.abs(parseBackendDateTime(ts) - virtualNowMs)
+        return currentDiff < bestDiff ? index : bestIndex
+      }, 0)
 
   return {
     color: ['#1d9e75', '#185fa5'],

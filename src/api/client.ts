@@ -12,12 +12,13 @@ export async function apiClient<T>(input: RequestInfo | URL, init?: RequestInit)
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null)
-    const message =
+    const rawMessage =
       typeof errorBody?.message === 'string'
         ? errorBody.message
         : typeof errorBody?.error?.message === 'string'
           ? errorBody.error.message
           : `API request failed: ${response.status}`
+    const message = `[${response.status}] ${rawMessage}`
 
     throw new Error(message)
   }

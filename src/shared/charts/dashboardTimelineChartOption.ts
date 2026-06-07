@@ -61,9 +61,9 @@ function getMarkerColor(severity: string) {
 function buildCategoryAxis(timeline: DashboardTimelineResponse) {
   const labelSet = new Set<string>()
 
-  timeline.actualSeries.forEach((point) => labelSet.add(point.ts))
-  timeline.predictionSeries.forEach((point) => labelSet.add(point.ts))
-  timeline.gapSeries.forEach((point) => labelSet.add(point.ts))
+  timeline.actualSeries.forEach((point) => labelSet.add(point.measuredAt))
+  timeline.predictionSeries.forEach((point) => labelSet.add(point.measuredAt))
+  timeline.gapSeries.forEach((point) => labelSet.add(point.measuredAt))
 
   const sorted = [...labelSet].sort((a, b) => parseBackendDateTime(a) - parseBackendDateTime(b))
 
@@ -73,8 +73,8 @@ function buildCategoryAxis(timeline: DashboardTimelineResponse) {
   }
 }
 
-function mapSeriesToCategories(tsKeys: string[], points: { ts: string; value: number }[]) {
-  const valueByTs = new Map(points.map((point) => [point.ts, point.value]))
+function mapSeriesToCategories(tsKeys: string[], points: { measuredAt: string; powerKw: number }[]) {
+  const valueByTs = new Map(points.map((point) => [point.measuredAt, point.powerKw]))
 
   return tsKeys.map((ts) => {
     const value = valueByTs.get(ts)
@@ -84,7 +84,7 @@ function mapSeriesToCategories(tsKeys: string[], points: { ts: string; value: nu
 }
 
 function mapGapToCategories(tsKeys: string[], timeline: DashboardTimelineResponse) {
-  const gapByTs = new Map(timeline.gapSeries.map((point) => [point.ts, point.gapRate]))
+  const gapByTs = new Map(timeline.gapSeries.map((point) => [point.measuredAt, point.gapRate]))
 
   return tsKeys.map((ts) => {
     const rate = gapByTs.get(ts)
@@ -119,22 +119,22 @@ export function buildDashboardTimelineChartOption(
   const gapData = mapGapToCategories(tsKeys, timeline)
 
   const chartValues = [
-    ...timeline.actualSeries.map((point) => point.value),
-    ...timeline.predictionSeries.map((point) => point.value),
+    ...timeline.actualSeries.map((point) => point.powerKw),
+    ...timeline.predictionSeries.map((point) => point.powerKw),
   ]
 
   const virtualNowIndex = findVirtualNowIndex(tsKeys, timeline.virtualNow)
 
   const markerScatterData = timeline.anomalyMarkers
     .map((marker) => {
-      const index = tsKeys.indexOf(marker.ts)
+      const index = tsKeys.indexOf(marker.detectedAt)
 
       if (index < 0) {
         return null
       }
 
-      const actualValue = timeline.actualSeries.find((point) => point.ts === marker.ts)?.value
-      const predictionValue = timeline.predictionSeries.find((point) => point.ts === marker.ts)?.value
+      const actualValue = timeline.actualSeries.find((point) => point.measuredAt === marker.detectedAt)?.powerKw
+      const predictionValue = timeline.predictionSeries.find((point) => point.measuredAt === marker.detectedAt)?.powerKw
       const yValue = actualValue ?? predictionValue ?? 0
 
       return {
@@ -237,7 +237,7 @@ export function buildDashboardTimelineChartOption(
               return ''
             }
 
-            return `${marker.summary}<br/>${marker.severity} · ${marker.status}`
+            return `${marker.summary}<br/>${marker.severity}${marker.status ? ` · ${marker.status}` : ''}`
           },
         },
       },

@@ -785,6 +785,10 @@
   padding: 12px 16px 14px 24px;
 }
 
+.timelineBodySingle {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .timelineChart {
   position: relative;
   min-height: 194px;

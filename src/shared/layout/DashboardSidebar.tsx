@@ -42,6 +42,8 @@ export function DashboardSidebar({ activeSection, profileActive = false }: Dashb
   const [plantStatus, setPlantStatus] = useState('LOADING')
   const [plantId, setPlantId] = useState<number | null>(null)
   const [playbackRunning, setPlaybackRunning] = useState(false)
+  const [playbackTickSeconds, setPlaybackTickSeconds] = useState(1)
+  const [playbackStepHours, setPlaybackStepHours] = useState(1)
   const [simulationBusy, setSimulationBusy] = useState(false)
   const [simulationError, setSimulationError] = useState('')
   const isAdmin = getSessionUser().role === 'ADMIN'
@@ -77,6 +79,8 @@ export function DashboardSidebar({ activeSection, profileActive = false }: Dashb
           setPlantStatus(selectedPlant.status)
           setOpenAnomalyCount(nextOpenCount)
           setPlaybackRunning(playbackResponse.data.running)
+          setPlaybackTickSeconds(playbackResponse.data.tickSeconds)
+          setPlaybackStepHours(playbackResponse.data.stepHours)
         }
       } catch {
         if (isActive) {
@@ -85,6 +89,8 @@ export function DashboardSidebar({ activeSection, profileActive = false }: Dashb
           setPlantStatus('ERROR')
           setOpenAnomalyCount(0)
           setPlaybackRunning(false)
+          setPlaybackTickSeconds(1)
+          setPlaybackStepHours(1)
         }
       }
     }
@@ -115,6 +121,8 @@ export function DashboardSidebar({ activeSection, profileActive = false }: Dashb
     try {
       const startResponse = await startPlayback()
       setPlaybackRunning(startResponse.data.running)
+      setPlaybackTickSeconds(startResponse.data.tickSeconds)
+      setPlaybackStepHours(startResponse.data.stepHours)
       notifySimulationChange()
     } catch (error) {
       setSimulationError(error instanceof Error ? error.message : '시뮬레이션 API 호출 실패')
@@ -173,6 +181,7 @@ export function DashboardSidebar({ activeSection, profileActive = false }: Dashb
           await triggerVisionAnomaly({
             plantId,
             anomalyType: 'CRACK',
+            anomalySeverity: 'HIGH',
             confidence: 0.94,
             imageUrl: 'http://localhost:8080/images/crack.jpg',
             xaiExplanation: '외부 충격으로 인한 선형 크랙 감지 (우측 상단 모서리)',
@@ -181,6 +190,7 @@ export function DashboardSidebar({ activeSection, profileActive = false }: Dashb
           await triggerVisionAnomaly({
             plantId,
             anomalyType: 'DIRT',
+            anomalySeverity: 'MEDIUM',
             confidence: 0.75,
             imageUrl: 'http://localhost:8080/images/pollution.jpg',
             xaiExplanation: '패널 하단부 조류 분변 및 먼지 누적 감지',
@@ -207,12 +217,27 @@ export function DashboardSidebar({ activeSection, profileActive = false }: Dashb
     try {
       const stopResponse = await stopPlayback()
       setPlaybackRunning(stopResponse.data.running)
+      setPlaybackTickSeconds(stopResponse.data.tickSeconds)
+      setPlaybackStepHours(stopResponse.data.stepHours)
       notifySimulationChange()
     } catch (error) {
       setSimulationError(error instanceof Error ? error.message : '시뮬레이션 정지 실패')
     } finally {
       setSimulationBusy(false)
     }
+  }, [isAdmin, playbackRunning])
+
+  useEffect(() => {
+    if (!isAdmin || !playbackRunning) {
+      return undefined
+    }
+
+    const handleBeforeUnload = () => {
+      void stopPlayback().catch(() => {})
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [isAdmin, playbackRunning])
 
   const simulationButtonLabel = playbackRunning ? '시뮬레이션 실행 중' : '시뮬레이션 시작'
@@ -349,6 +374,7 @@ export function DashboardSidebar({ activeSection, profileActive = false }: Dashb
             </button>
           ) : null}
           {simulationError ? <p className={styles.simulationError}>{simulationError}</p> : null}
+          <p className={styles.simulationMeta}>{playbackTickSeconds}s fixed · +{playbackStepHours}h/tick</p>
         </div>
 
         <section className={[styles.profile, profileActive ? styles.profileActive : ''].filter(Boolean).join(' ')} aria-label="사용자 정보">

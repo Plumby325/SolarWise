@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
-import { getDashboardTimeline, getForecast, getForecastExplanation, getMeasurements } from '@/api'
-import type { DashboardTimelineResponse, ForecastPoint, MeasurementPoint, XaiExplanationPoint } from '@/api'
+import { getForecast, getForecastExplanation, getMeasurements } from '@/api'
+import type { ForecastPoint, MeasurementPoint, XaiExplanationPoint } from '@/api'
 import {
   FORECAST_CHART_DUMMY_MESSAGE,
   FORECAST_BRIDGE_MEASUREMENT_WINDOW_MS,
@@ -13,7 +13,8 @@ import {
 } from '@/shared/charts/forecastComboChartOption'
 import { deriveShapFeatureContributions } from '@/shared/charts/xaiFeatureContributions'
 import { useDefaultPlant } from '@/shared/hooks/useDefaultPlant'
-import { DashboardSidebar, SIMULATION_CHANGE_EVENT } from '@/shared/layout/DashboardSidebar'
+import { useDashboardTimeline } from '@/shared/hooks/useDashboardTimeline'
+import { DashboardSidebar } from '@/shared/layout/DashboardSidebar'
 import { EChart } from '@/shared/ui/EChart'
 import { formatLocalDateTimeForApi } from '@/shared/utils/dateFormat'
 import styles from './PowerForecastPage.module.css'
@@ -151,52 +152,22 @@ export function PowerForecastPage() {
   const isDummyForced = isForecastChartDummyForced()
   const [forecastHorizon, setForecastHorizon] = useState<ForecastHorizonId>('2d')
   const [forecasts, setForecasts] = useState<ForecastPoint[]>([])
-  const [timeline, setTimeline] = useState<DashboardTimelineResponse | null>(null)
-  const [timelineError, setTimelineError] = useState('')
   const [xaiExplanations, setXaiExplanations] = useState<XaiExplanationPoint[]>([])
   const [forecastError, setForecastError] = useState('')
   const [bridgeMeasurements, setBridgeMeasurements] = useState<MeasurementPoint[]>([])
   const [bridgeError, setBridgeError] = useState('')
+  const {
+    timeline,
+    error: timelineError,
+    setRange,
+    setFutureHours,
+  } = useDashboardTimeline(defaultPlantId)
 
   useEffect(() => {
-    if (!defaultPlantId) {
-      setTimeline(null)
-      setTimelineError('발전소 데이터 없음')
-      return
-    }
-
-    let isActive = true
-    const futureHours = forecastHorizon === 'today' ? 24 : forecastHorizon === '2d' ? 48 : 72
-
-    const fetchTimeline = () => {
-      getDashboardTimeline(defaultPlantId, { range: 'DAY', futureHours })
-        .then((res) => {
-          if (!isActive) {
-            return
-          }
-          const hasData = res.data.actualSeries.length > 0 || res.data.predictionSeries.length > 0
-          setTimeline(res.data)
-          setTimelineError(hasData ? '' : '타임라인 API 데이터 없음')
-        })
-        .catch((error) => {
-          if (!isActive) {
-            return
-          }
-          setTimelineError(error instanceof Error ? error.message : '타임라인 API 조회 실패')
-        })
-    }
-
-    fetchTimeline()
-    const timer = window.setInterval(fetchTimeline, 1000)
-    const handleSimulationChange = () => fetchTimeline()
-    window.addEventListener(SIMULATION_CHANGE_EVENT, handleSimulationChange)
-
-    return () => {
-      isActive = false
-      window.clearInterval(timer)
-      window.removeEventListener(SIMULATION_CHANGE_EVENT, handleSimulationChange)
-    }
-  }, [defaultPlantId, forecastHorizon])
+    setRange('DAY')
+    const nextFutureHours = forecastHorizon === 'today' ? 24 : forecastHorizon === '2d' ? 48 : 72
+    setFutureHours(nextFutureHours)
+  }, [forecastHorizon, setFutureHours, setRange])
 
   useEffect(() => {
     if (!defaultPlantId) {
@@ -535,7 +506,7 @@ export function PowerForecastPage() {
           <div className={styles.panelHeader}>
             <div>
               <h2 id="forecast-chart-title">2~3일 발전량 예측</h2>
-              <p>{forecastError || bridgeError || 'XGBoost 기반 · 실측 + 예측 · 대시보드와 동일 차트'}</p>
+              <p>{timelineError || forecastError || bridgeError || 'XGBoost 기반 · 실측 + 예측 · 대시보드와 동일 차트'}</p>
             </div>
             <span className={styles.aiBadge}>AI Powered</span>
             <div className={styles.unitControls} aria-label="데이터 단위">

@@ -89,22 +89,25 @@ export type UpdateAnomalyStatusResponse = {
 export type TimelineRange = 'DAY' | 'WEEK' | 'MONTH'
 
 export type TimelineTimePoint = {
-  ts: string
-  value: number
+  measuredAt: string
+  powerKw: number
+  temperature?: number | null
+  irradiance?: number | null
+  humidity?: number | null
 }
 
 export type TimelineGapPoint = {
-  ts: string
-  absGap: number
+  measuredAt: string
+  absoluteGap: number
   gapRate: number
 }
 
 export type TimelineAnomalyMarker = {
   eventId: number
-  ts: string
-  type: string
+  detectedAt: string
+  type?: string
   severity: string
-  status: string
+  status?: string
   summary: string
 }
 
@@ -115,6 +118,7 @@ export type DashboardTimelineResponse = {
   windowStart: string
   windowEnd: string
   forecastEnd: string
+  lastUpdatedAt: string
   actualSeries: TimelineTimePoint[]
   predictionSeries: TimelineTimePoint[]
   gapSeries: TimelineGapPoint[]
@@ -150,6 +154,61 @@ function normalizeTimelineResponse(raw: unknown): DashboardTimelineResponse {
       ? source.anomaly_markers
       : []
 
+  const normalizeMeasuredAt = (row: Record<string, unknown>) => {
+    if (typeof row.measuredAt === 'string') {
+      return row.measuredAt
+    }
+    if (typeof row.measured_at === 'string') {
+      return row.measured_at
+    }
+    if (typeof row.ts === 'string') {
+      return row.ts
+    }
+    return null
+  }
+
+  const normalizePowerKw = (row: Record<string, unknown>) => {
+    if (typeof row.powerKw === 'number') {
+      return row.powerKw
+    }
+    if (typeof row.power_kw === 'number') {
+      return row.power_kw
+    }
+    if (typeof row.value === 'number') {
+      return row.value
+    }
+    return null
+  }
+
+  const normalizeGap = (row: Record<string, unknown>) => {
+    if (typeof row.absoluteGap === 'number') {
+      return row.absoluteGap
+    }
+    if (typeof row.absolute_gap === 'number') {
+      return row.absolute_gap
+    }
+    if (typeof row.absGap === 'number') {
+      return row.absGap
+    }
+    if (typeof row.abs_gap === 'number') {
+      return row.abs_gap
+    }
+    return null
+  }
+
+  const normalizeDetectedAt = (row: Record<string, unknown>) => {
+    if (typeof row.detectedAt === 'string') {
+      return row.detectedAt
+    }
+    if (typeof row.detected_at === 'string') {
+      return row.detected_at
+    }
+    if (typeof row.ts === 'string') {
+      return row.ts
+    }
+    return null
+  }
+
   return {
     plantId: typeof source.plantId === 'number' ? source.plantId : Number(source.plant_id ?? 0),
     range: (typeof source.range === 'string' ? source.range : 'DAY') as TimelineRange,
@@ -157,64 +216,87 @@ function normalizeTimelineResponse(raw: unknown): DashboardTimelineResponse {
     windowStart: typeof source.windowStart === 'string' ? source.windowStart : String(source.window_start ?? ''),
     windowEnd: typeof source.windowEnd === 'string' ? source.windowEnd : String(source.window_end ?? ''),
     forecastEnd: typeof source.forecastEnd === 'string' ? source.forecastEnd : String(source.forecast_end ?? ''),
+    lastUpdatedAt: typeof source.lastUpdatedAt === 'string'
+      ? source.lastUpdatedAt
+      : typeof source.last_updated_at === 'string'
+        ? source.last_updated_at
+        : typeof source.virtualNow === 'string'
+          ? source.virtualNow
+          : String(source.virtual_now ?? ''),
     actualSeries: actualSeriesRaw
-      .map((point) => {
+      .map((point): TimelineTimePoint | null => {
         if (!point || typeof point !== 'object') {
           return null
         }
         const row = point as Record<string, unknown>
-        if (typeof row.ts !== 'string' || typeof row.value !== 'number') {
+        const measuredAt = normalizeMeasuredAt(row)
+        const powerKw = normalizePowerKw(row)
+        if (!measuredAt || powerKw == null) {
           return null
         }
-        return { ts: row.ts, value: row.value }
+        return {
+          measuredAt,
+          powerKw,
+          temperature: typeof row.temperature === 'number' ? row.temperature : null,
+          irradiance: typeof row.irradiance === 'number' ? row.irradiance : null,
+          humidity: typeof row.humidity === 'number' ? row.humidity : null,
+        }
       })
       .filter((point): point is TimelineTimePoint => point != null),
     predictionSeries: predictionSeriesRaw
-      .map((point) => {
+      .map((point): TimelineTimePoint | null => {
         if (!point || typeof point !== 'object') {
           return null
         }
         const row = point as Record<string, unknown>
-        if (typeof row.ts !== 'string' || typeof row.value !== 'number') {
+        const measuredAt = normalizeMeasuredAt(row)
+        const powerKw = normalizePowerKw(row)
+        if (!measuredAt || powerKw == null) {
           return null
         }
-        return { ts: row.ts, value: row.value }
+        return { measuredAt, powerKw }
       })
       .filter((point): point is TimelineTimePoint => point != null),
     gapSeries: gapSeriesRaw
-      .map((point) => {
+      .map((point): TimelineGapPoint | null => {
         if (!point || typeof point !== 'object') {
           return null
         }
         const row = point as Record<string, unknown>
-        if (typeof row.ts !== 'string' || typeof row.absGap !== 'number' || typeof row.gapRate !== 'number') {
+        const measuredAt = normalizeMeasuredAt(row)
+        const absoluteGap = normalizeGap(row)
+        if (!measuredAt || absoluteGap == null || typeof row.gapRate !== 'number') {
           return null
         }
-        return { ts: row.ts, absGap: row.absGap, gapRate: row.gapRate }
+        return { measuredAt, absoluteGap, gapRate: row.gapRate }
       })
       .filter((point): point is TimelineGapPoint => point != null),
     anomalyMarkers: anomalyMarkersRaw
-      .map((marker) => {
+      .map((marker): TimelineAnomalyMarker | null => {
         if (!marker || typeof marker !== 'object') {
           return null
         }
         const row = marker as Record<string, unknown>
+        const eventId = typeof row.eventId === 'number'
+          ? row.eventId
+          : typeof row.event_id === 'number'
+            ? row.event_id
+            : null
+        const detectedAt = normalizeDetectedAt(row)
         if (
-          typeof row.eventId !== 'number'
-          || typeof row.ts !== 'string'
-          || typeof row.type !== 'string'
+          eventId == null
+          || !detectedAt
           || typeof row.severity !== 'string'
-          || typeof row.status !== 'string'
           || typeof row.summary !== 'string'
         ) {
           return null
         }
         return {
-          eventId: row.eventId,
-          ts: row.ts,
-          type: row.type,
+          eventId,
+          detectedAt,
+          type: typeof row.type === 'string' ? row.type : undefined,
           severity: row.severity,
-          status: row.status,
+          status: typeof row.status === 'string' ? row.status : undefined,
           summary: row.summary,
         }
       })

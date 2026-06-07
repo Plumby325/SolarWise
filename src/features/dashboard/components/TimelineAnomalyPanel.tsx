@@ -77,11 +77,11 @@ export function TimelineAnomalyPanel({ plantId, marker, onClose, onStatusUpdated
 
   const displayEvent = event ?? {
     eventId: marker.eventId,
-    type: marker.type,
+    type: marker.type ?? 'POWER',
     severity: marker.severity,
-    detectedAt: marker.ts,
+    detectedAt: marker.detectedAt,
     summary: marker.summary,
-    status: marker.status,
+    status: marker.status ?? 'OPEN',
     cause: null,
     recommendedAction: null,
     xaiExplanation: null,
