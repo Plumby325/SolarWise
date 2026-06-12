@@ -48,36 +48,13 @@ function isSameLocalDay(timestamp: number, reference: Date) {
   )
 }
 
-function inferForecastIntervalHours(points: ForecastPoint[]) {
-  if (points.length < 2) {
-    return 1
-  }
-  const sortedTimes = points
-    .map((point) => parseBackendDateTime(point.target_time))
-    .sort((a, b) => a - b)
-  const diffs: number[] = []
-  for (let index = 1; index < sortedTimes.length; index += 1) {
-    const diff = sortedTimes[index] - sortedTimes[index - 1]
-    if (diff > 0) {
-      diffs.push(diff)
-    }
-  }
-
-  if (diffs.length === 0) {
-    return 1
-  }
-
-  return Math.max(0.25, Math.min(...diffs) / (60 * 60 * 1000))
-}
-
-function getTodayForecastEnergyKwh(points: ForecastPoint[]) {
-  const now = new Date()
-  const todayPoints = points.filter((point) => isSameLocalDay(parseBackendDateTime(point.target_time), now))
+function getTodayForecastEnergyKwh(points: ForecastPoint[], referenceDateTime?: string | null) {
+  const reference = referenceDateTime ? new Date(parseBackendDateTime(referenceDateTime)) : new Date()
+  const todayPoints = points.filter((point) => isSameLocalDay(parseBackendDateTime(point.target_time), reference))
   if (todayPoints.length === 0) {
     return null
   }
-  const intervalHours = inferForecastIntervalHours(todayPoints)
-  const total = todayPoints.reduce((sum, point) => sum + point.predicted_power_kw * intervalHours, 0)
+  const total = todayPoints.reduce((sum, point) => sum + point.predicted_power_kw, 0)
   return Number(total.toFixed(1))
 }
 
@@ -267,7 +244,7 @@ export function PowerForecastPage() {
     [bridgeError, forecastError, timeline, timelineError],
   )
   const summaryCards = useMemo(() => {
-    const todayKwh = getTodayForecastEnergyKwh(forecasts)
+    const todayKwh = getTodayForecastEnergyKwh(forecasts, timeline?.virtualNow ?? null)
     const avgConfidence = getAverageConfidencePercent(forecasts)
     const shapFeatureContributions = deriveShapFeatureContributions(xaiExplanations)
     const majorFactor = shapFeatureContributions[0]
@@ -301,7 +278,7 @@ export function PowerForecastPage() {
         tone: 'amber',
       },
     ] as const
-  }, [forecasts, xaiExplanations])
+  }, [forecasts, timeline?.virtualNow, xaiExplanations])
   const shapFeatureContributions = useMemo(
     () => deriveShapFeatureContributions(xaiExplanations),
     [xaiExplanations],
