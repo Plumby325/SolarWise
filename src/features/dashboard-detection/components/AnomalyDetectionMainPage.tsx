@@ -269,7 +269,7 @@ export function AnomalyDetectionMainPage() {
     updateAnomalyStatus(defaultPlantId, selectedEvent.eventId, 'RESOLVED')
       .then(() => refreshEventsAfterStatusChange())
       .catch((error) => {
-        setErrorMessage(error instanceof Error ? error.message : '조치 완료 처리에 실패했습니다.')
+        setErrorMessage(error instanceof Error ? error.message : '해결 완료 처리에 실패했습니다.')
       })
       .finally(() => {
         setIsUpdating(false)
@@ -474,14 +474,14 @@ export function AnomalyDetectionMainPage() {
                       onClick={handleAcknowledge}
                       disabled={isUpdating || selectedEvent.status === 'ACKNOWLEDGED' || selectedEvent.status === 'RESOLVED'}
                     >
-                      {selectedEvent.status === 'ACKNOWLEDGED' || selectedEvent.status === 'RESOLVED' ? '✓ 확인 완료됨' : '✓ 확인 완료 처리'}
+                      {selectedEvent.status === 'ACKNOWLEDGED' || selectedEvent.status === 'RESOLVED' ? '✓ 확인 완료' : '✓ 확인 완료'}
                     </button>
                     <button
                       type="button"
                       onClick={handleResolve}
                       disabled={isUpdating || selectedEvent.status === 'RESOLVED'}
                     >
-                      {selectedEvent.status === 'RESOLVED' ? '✓ 조치 완료됨' : '조치 완료'}
+                      {selectedEvent.status === 'RESOLVED' ? '✓ 해결 완료' : '해결 완료'}
                     </button>
                     <Link to={`/anomaly-detection/detail?eventId=${selectedEvent.eventId}`}>상세 보기 →</Link>
                   </div>

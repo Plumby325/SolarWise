@@ -455,12 +455,12 @@ export function getAnomalyDetail(plantId: number, eventId: number) {
 }
 
 /**
- * 이상 이벤트 상태 변경 — 백엔드 {@code POST /api/v1/plants/{plantId}/anomalies/{eventId}/status}
+ * 이상 이벤트 상태 변경 — 백엔드 {@code PATCH /api/v1/plants/{plantId}/anomalies/{eventId}/status}
  * 요청 본문: {@code { "status": "OPEN" | "ACKNOWLEDGED" | "RESOLVED" }}
  */
 export function updateAnomalyStatus(plantId: number, eventId: number, status: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED') {
   return apiClient<ApiResponse<UpdateAnomalyStatusResponse>>(`/api/v1/plants/${plantId}/anomalies/${eventId}/status`, {
-    method: 'POST',
+    method: 'PATCH',
     body: JSON.stringify({ status }),
   })
 }
